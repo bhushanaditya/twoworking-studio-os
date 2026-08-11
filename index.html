@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio OS — Home (preview)</title>
+<style>
+  /* ============ REAL FONT ============ */
+  @font-face {
+    font-family: "Facade Sud";
+    src: url("./assets/Facade-Sud.woff") format("woff"),
+         url("./assets/Facade-Sud.otf") format("opentype");
+    font-display: swap;
+  }
+
+  /* ============ DESIGN TOKENS (from Figma) ============ */
+  :root {
+    --black-900: #212121;
+    --black-pure: #000000;
+    --white-100: #ffffff;
+    --gray-100: #f0f0f0;
+    --green-500: #19ff55;
+    --red-500: #ff1919;
+
+    --color-bg-surface: var(--black-900);
+    --color-text-primary: var(--white-100);
+    --color-text-on-accent: var(--black-900);
+    --color-accent-primary: var(--green-500);
+    --color-border-default: var(--gray-100);
+    --color-danger: var(--red-500);
+
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 20px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+    --spacing-3xl: 40px;
+
+    /* Responsive content width: mobile = full width, desktop = capped so it
+       doesn't stretch into an unreadable single line, but dividers/borders
+       still run edge-to-edge of that width (not floating in a tiny mobile
+       column with dead space on either side). */
+    --content-max: 1100px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    font-family: 'Open Sans', sans-serif;
+  }
+  body { min-height: 100vh; }
+
+  .display {
+    font-family: "Facade Sud", sans-serif;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  /* Full-height frame. The vertical guide lines sit INSET by --spacing-lg
+     from each edge (confirmed against Figma: guides are at x=20/490 inside
+     a 511-wide frame) — not at the true outer edge. Card/goal-card borders
+     are padded by the same --spacing-lg, so they land exactly on these
+     lines. Only the top-bar divider runs fully edge-to-edge. */
+  .app-frame {
+    position: relative;
+    max-width: var(--content-max);
+    margin: 0 auto;
+    width: 100%;
+    min-height: 100vh;
+  }
+  .app-frame::before,
+  .app-frame::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--color-border-default);
+  }
+  .app-frame::before { left: var(--spacing-lg); }
+  .app-frame::after { right: var(--spacing-lg); }
+
+  .page {
+    width: 100%;
+  }
+
+  /* ============ TOP BAR ============
+     Matches Figma: this divider ignores the guide inset and runs the full
+     width of the browser window, even though .top-bar itself stays inside
+     .app-frame (so the vertical guide lines still pass through the header,
+     same as before). "Break out" of the max-width parent with the classic
+     100vw + negative-margin trick. */
+  .top-bar {
+    padding-top: clamp(14px, 2vw, 20px);
+    padding-bottom: clamp(14px, 2vw, 20px);
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid var(--color-border-default);
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    margin-left: -50vw;
+  }
+  .logo { width: clamp(40px, 3vw, 52px); }
+  .logo svg { display: block; width: 100%; height: auto; }
+
+  /* ============ GOAL CARD ============
+     Matches Figma exactly: the card frame itself spans full width (no
+     horizontal padding), the top divider is inset by --spacing-lg on each
+     side (landing on the guide lines), the text content is inset the same
+     amount, and the bottom divider matches. */
+  /* First inset layer: lands the whole card + both dividers exactly on
+     the guide lines, same as .people-list does for the cards below. */
+  .goal-card {
+    padding: var(--spacing-xl) var(--spacing-lg) 0;
+  }
+  .goal-divider {
+    height: 1px;
+    background: var(--color-border-default);
+  }
+  /* Second inset layer: extra breathing room past the guide line, same
+     amount as .person-card's own padding gives NABH/AVI/ADI. */
+  .goal-card-inner {
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-xl);
+  }
+  .goal-header {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+  }
+  .goal-title {
+    margin: 0;
+    font-size: clamp(30px, 4.2vw, 48px);
+    letter-spacing: 0.5px;
+  }
+  .goal-amount-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+  }
+  .goal-amount {
+    margin: 0;
+    font-weight: 300;
+    font-size: clamp(16px, 1.6vw, 20px);
+  }
+  .goal-edit-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: var(--color-accent-primary);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .goal-edit-btn[hidden] { display: none; } /* [hidden] must win over display:flex above */
+  .goal-edit-btn svg { width: 15px; height: 15px; }
+  .goal-amount-input {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: clamp(16px, 1.6vw, 20px);
+    color: var(--color-text-primary);
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--color-accent-primary);
+    padding: 0 0 2px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .goal-amount-input:focus { outline: none; }
+
+  /* ============ PEOPLE LIST ============ */
+  .people-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 0 var(--spacing-lg);
+    margin-top: var(--spacing-3xl);
+    gap: var(--spacing-lg);
+    padding-bottom: var(--spacing-3xl);
+  }
+  @media (min-width: 760px) {
+    .people-list { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1080px) {
+    .people-list { grid-template-columns: repeat(3, 1fr); }
+    /* 3-up on desktop means each card is much narrower than the mobile
+       design assumed — shrink the streak dots so 10-per-row still reads
+       comfortably instead of feeling oversized/cramped. */
+    .streak-dot { width: 16px; height: 16px; }
+  }
+
+  .person-card {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid var(--color-text-primary);
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  .person-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: var(--spacing-sm);
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: inherit;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+  }
+  .person-name {
+    margin: 0;
+    font-size: clamp(30px, 3.4vw, 44px);
+    letter-spacing: 0.5px;
+  }
+  .chevron {
+    width: 18px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent-primary);
+    flex-shrink: 0;
+  }
+  .chevron svg { width: 18px; height: 34px; }
+
+  .streak-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+  .streak-dot {
+    width: clamp(16px, 1.9vw, 23.84px);
+    height: clamp(16px, 1.9vw, 23.84px);
+    border-radius: 50%;
+    border: 0.6px solid var(--color-border-default);
+    flex-shrink: 0;
+  }
+  .streak-dot.filled { background: var(--color-accent-primary); }
+  .streak-dot.empty { background: var(--color-bg-surface); }
+
+  /* Today's log entry (if any) shown under a person's streak — quotes
+     whatever they actually typed into LOG TODAY on their own page. Hidden
+     entirely (via :empty) if they haven't logged anything yet today. */
+  .person-status {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 14px;
+    opacity: 0.85;
+  }
+  .person-status:empty { display: none; }
+  .person-status::before { content: '"'; }
+  .person-status::after { content: '"'; }
+
+  /* ============ GOAL PROGRESS (5 eyes) ============
+     Same eye-shape iconography as the state icons on the Person page —
+     empty (outline) or filled (glowing), just reused here as a simple
+     5-step progress tracker for the monthly goal. Each eye toggles on its
+     own between empty/filled; how many are filled is "how much we've hit
+     the goal this month." */
+  .goal-progress {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+    flex-wrap: wrap;
+  }
+  .goal-eye {
+    width: clamp(32px, 4vw, 44px);
+    height: clamp(17px, 2.2vw, 24px);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .goal-eye svg { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+  <div class="app-frame">
+
+  <div class="top-bar">
+    <div class="logo">
+      <img src="./assets/logo.svg" alt="Twoworking Studio logo" width="52" height="64" style="display:block; width:100%; height:auto;">
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="goal-card">
+      <div class="goal-divider"></div>
+      <div class="goal-card-inner">
+        <div class="goal-header">
+          <h1 class="display goal-title">AUGUST GOAL:</h1>
+        </div>
+        <div class="goal-amount-row">
+          <p class="goal-amount" id="goalAmountText">Earn 1 Lakh rupees</p>
+          <button class="goal-edit-btn" id="goalEditBtn" aria-label="Edit monthly goal">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.3 1.7a1 1 0 0 1 1.4 0l1.6 1.6a1 1 0 0 1 0 1.4L5.4 13.6l-3.4.8.8-3.4L11.3 1.7Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <input class="goal-amount-input" id="goalAmountInput" type="text" hidden>
+        </div>
+        <div class="goal-progress" id="goalProgress"></div>
+      </div>
+      <div class="goal-divider"></div>
+    </div>
+
+    <div class="people-list">
+
+      <div class="person-card">
+        <button class="person-card-header" data-person="nabh">
+          <h2 class="display person-name">NABH</h2>
+          <span class="chevron">
+            <svg width="20" height="38" viewBox="0 0 20 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0.530273 36.5303L18.5303 18.5303L0.530272 0.530329" stroke="#19FF55" stroke-width="1.5"/>
+            </svg>
+          </span>
+        </button>
+        <div class="streak-grid" data-streak="nabh"></div>
+        <p class="person-status" data-status="nabh"></p>
+      </div>
+
+      <div class="person-card">
+        <button class="person-card-header" data-person="avi">
+          <h2 class="display person-name">AVI</h2>
+          <span class="chevron">
+            <svg width="20" height="38" viewBox="0 0 20 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0.530273 36.5303L18.5303 18.5303L0.530272 0.530329" stroke="#19FF55" stroke-width="1.5"/>
+            </svg>
+          </span>
+        </button>
+        <div class="streak-grid" data-streak="avi"></div>
+        <p class="person-status" data-status="avi"></p>
+      </div>
+
+      <div class="person-card">
+        <button class="person-card-header" data-person="adi">
+          <h2 class="display person-name">ADI</h2>
+          <span class="chevron">
+            <svg width="20" height="38" viewBox="0 0 20 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0.530273 36.5303L18.5303 18.5303L0.530272 0.530329" stroke="#19FF55" stroke-width="1.5"/>
+            </svg>
+          </span>
+        </button>
+        <div class="streak-grid" data-streak="adi"></div>
+        <p class="person-status" data-status="adi"></p>
+      </div>
+
+    </div>
+  </div>
+
+  </div><!-- /.app-frame -->
+
+  <!-- Firebase: real shared database (Stage 3). Uses the compat SDK loaded
+       via plain script tags — no build tools needed, works straight off
+       this static file. -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+
+  <script>
+    // Real per-day data straight from Firestore — one document per person
+    // (people/NABH, people/AVI, people/ADI), the same ones the Person page
+    // writes to. `onSnapshot` means this updates live: if Nabh logs
+    // something on his phone, your Home screen updates on its own, no
+    // refresh needed.
+    const today = new Date();
+    const todayDayOfMonth = today.getDate();
+    const year = today.getFullYear();
+    const monthIndex = today.getMonth();
+
+    function formatISODate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+    const todayISO = formatISODate(today);
+
+    function renderStreak(container, dailyLog) {
+      container.innerHTML = '';
+      const loggedDates = (dailyLog || []).map(e => e.dateISO);
+      for (let day = 1; day <= todayDayOfMonth; day++) {
+        const iso = formatISODate(new Date(year, monthIndex, day));
+        const dot = document.createElement('div');
+        dot.className = 'streak-dot ' + (loggedDates.includes(iso) ? 'filled' : 'empty');
+        container.appendChild(dot);
+      }
+    }
+
+    // One live listener per person — each updates that person's streak dots
+    // and today's status line whenever their data changes, from anywhere.
+    ['nabh', 'avi', 'adi'].forEach(person => {
+      db.collection('people').doc(person.toUpperCase()).onSnapshot(snap => {
+        const data = snap.data() || {};
+        const dailyLog = data.dailyLog || [];
+
+        const streakEl = document.querySelector('[data-streak="' + person + '"]');
+        if (streakEl) renderStreak(streakEl, dailyLog);
+
+        const statusEl = document.querySelector('[data-status="' + person + '"]');
+        if (statusEl) {
+          const todaysEntry = dailyLog.find(e => e.dateISO === todayISO);
+          statusEl.textContent = todaysEntry ? todaysEntry.text : '';
+        }
+      });
+    });
+
+    // ============ EDITABLE MONTHLY GOAL + PROGRESS (5 eyes) ============
+    // Both live in one Firestore doc, goals/<MONTH> — text you type and
+    // which eyes are filled, shared live between all three of you. Click
+    // the pencil to edit the goal text (Enter/clicking away saves it), and
+    // each eye jumps straight to filled on click (click again to clear).
+    const goalAmountText = document.getElementById('goalAmountText');
+    const goalAmountInput = document.getElementById('goalAmountInput');
+    const goalEditBtn = document.getElementById('goalEditBtn');
+    const goalMonthName = document.querySelector('.goal-title').textContent.replace('GOAL:', '').trim();
+    const goalDocRef = db.collection('goals').doc(goalMonthName);
+    const goalProgressEl = document.getElementById('goalProgress');
+    const GOAL_EYE_COUNT = 5;
+
+    function startEditingGoal() {
+      goalAmountInput.value = goalAmountText.textContent;
+      goalAmountText.hidden = true;
+      goalEditBtn.hidden = true;
+      goalAmountInput.hidden = false;
+      goalAmountInput.focus();
+      goalAmountInput.select();
+    }
+    function saveGoal() {
+      const value = goalAmountInput.value.trim();
+      if (value) goalDocRef.set({ text: value }, { merge: true });
+      goalAmountInput.hidden = true;
+      goalAmountText.hidden = false;
+      goalEditBtn.hidden = false;
+    }
+    goalEditBtn.addEventListener('click', startEditingGoal);
+    goalAmountInput.addEventListener('blur', saveGoal);
+    goalAmountInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') goalAmountInput.blur(); // triggers saveGoal via the blur handler
+      if (e.key === 'Escape') {
+        goalAmountInput.hidden = true;
+        goalAmountText.hidden = false;
+        goalEditBtn.hidden = false;
+      }
+    });
+
+    const eyeEmptySVG = '<svg viewBox="0 0 52 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25.8682 0.557617C36.3513 0.557673 45.5926 5.85753 51.0605 13.9209C45.5927 21.9846 36.3515 27.2851 25.8682 27.2852C15.3844 27.2852 6.14174 21.9851 0.673828 13.9209C6.1418 5.85704 15.3846 0.557642 25.8682 0.557617Z" stroke="#F0F0F0" stroke-width="1.115"/></svg>';
+    function eyeFilledSVG(filterId) {
+      return '<svg viewBox="0 0 56 28" fill="none" xmlns="http://www.w3.org/2000/svg"><g filter="url(#' + filterId + ')"><path d="M29.8682 0.557617C40.3513 0.557673 49.5926 5.85753 55.0605 13.9209C49.5927 21.9846 40.3515 27.2851 29.8682 27.2852C19.3844 27.2852 10.1417 21.9851 4.67383 13.9209C10.1418 5.85704 19.3846 0.557642 29.8682 0.557617ZM29.8369 4.07324C24.3923 4.07329 19.9776 8.48209 19.9775 13.9219C19.9777 19.3616 24.3924 23.7705 29.8369 23.7705C35.2816 23.7705 39.6961 19.3616 39.6963 13.9219C39.6963 8.48207 35.2817 4.07327 29.8369 4.07324Z" fill="#1AFF55" stroke="#1AFF55" stroke-width="1.115"/><path d="M20.502 13.9235C20.502 8.75089 24.6953 4.55762 29.8679 4.55762C35.0407 4.55764 39.234 8.75091 39.234 13.9235C39.234 19.0961 35.0407 23.2896 29.8679 23.2896C24.6953 23.2896 20.502 19.0961 20.502 13.9235Z" fill="white"/></g><defs><filter id="' + filterId + '" x="0" y="-4" width="59.736" height="35.8424" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="2"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 0.101961 0 0 0 0 1 0 0 0 0 0.333333 0 0 0 1 0"/><feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/><feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/></filter></defs></svg>';
+    }
+
+    let goalProgress = new Array(GOAL_EYE_COUNT).fill(false); // kept in sync by the listener below
+
+    function renderGoalProgress() {
+      goalProgressEl.innerHTML = '';
+      goalProgress.forEach((filled, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'goal-eye';
+        btn.setAttribute('aria-label', 'Goal progress step ' + (i + 1) + (filled ? ' (achieved)' : ' (not achieved)'));
+        btn.innerHTML = filled ? eyeFilledSVG('goal-eye-glow-' + i) : eyeEmptySVG;
+        btn.addEventListener('click', () => {
+          const updated = goalProgress.slice();
+          updated[i] = !updated[i]; // click to fill, click again to clear
+          goalDocRef.set({ progress: updated }, { merge: true });
+          // No manual re-render — the listener below picks up the write.
+        });
+        goalProgressEl.appendChild(btn);
+      });
+    }
+
+    // One listener for both the goal text and its progress eyes — updates
+    // live if anyone (including you, on another tab) changes either.
+    goalDocRef.onSnapshot(snap => {
+      const data = snap.data() || {};
+      goalAmountText.textContent = data.text || 'Earn 1 Lakh rupees';
+      goalProgress = (Array.isArray(data.progress) && data.progress.length === GOAL_EYE_COUNT)
+        ? data.progress
+        : new Array(GOAL_EYE_COUNT).fill(false);
+      renderGoalProgress();
+    });
+
+    // Tapping a person's name/chevron opens their Person Page. No real
+    // routing yet (Stage 3 territory) — just a link with ?person=<name>
+    // that person.html reads to know whose week to show.
+    document.querySelectorAll('.person-card-header').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const person = btn.getAttribute('data-person');
+        window.location.href = 'person.html?person=' + person;
+      });
+    });
+  </script>
+
+</body>
+</html>

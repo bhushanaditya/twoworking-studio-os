@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio OS — Person Page (preview)</title>
+<style>
+  @font-face {
+    font-family: "Facade Sud";
+    src: url("./assets/Facade-Sud.woff") format("woff"),
+         url("./assets/Facade-Sud.otf") format("opentype");
+    font-display: swap;
+  }
+
+  :root {
+    --black-900: #212121;
+    --white-100: #ffffff;
+    --gray-100: #f0f0f0;
+    --green-500: #19ff55;
+
+    --color-bg-surface: var(--black-900);
+    --color-text-primary: var(--white-100);
+    --color-text-on-accent: var(--black-900);
+    --color-accent-primary: var(--green-500);
+    --color-border-default: var(--gray-100);
+    --color-surface-inverse: var(--white-100);
+
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 20px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+    --spacing-3xl: 40px;
+
+    --radius-full: 999px;
+    --radius-md: 16px;
+    --color-danger: #ff1919;
+    --color-text-on-light: var(--black-900);
+    --color-bg-card: var(--gray-100);
+
+    --content-max: 1100px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    font-family: 'Open Sans', sans-serif;
+  }
+  body { min-height: 100vh; }
+
+  .display {
+    font-family: "Facade Sud", sans-serif;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .app-frame {
+    position: relative;
+    max-width: var(--content-max);
+    margin: 0 auto;
+    width: 100%;
+    min-height: 100vh;
+  }
+  .app-frame::before,
+  .app-frame::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--color-border-default);
+  }
+  .app-frame::before { left: var(--spacing-lg); }
+  .app-frame::after { right: var(--spacing-lg); }
+
+  /* ============ BACK NAV (links back to the Home screen) ============ */
+  .person-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg) clamp(var(--spacing-lg), 6vw, 84px) 0;
+  }
+  .person-nav a {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--color-accent-primary);
+    text-decoration: none;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+  .person-nav svg { width: 12px; height: 22px; transform: rotate(180deg); flex-shrink: 0; }
+
+  /* ============ SCREEN HEADER ============ */
+  .screen-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: clamp(28px, 4vw, 38px) clamp(var(--spacing-lg), 6vw, 84px) var(--spacing-lg);
+  }
+  .screen-header-title {
+    margin: 0;
+    font-size: clamp(32px, 4.2vw, 48px);
+    letter-spacing: 0.5px;
+  }
+  .screen-header .chevron {
+    width: 18px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent-primary);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .screen-header .chevron svg { width: 18px; height: 34px; }
+
+  .top-divider {
+    height: 1px;
+    background: var(--color-border-default);
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    margin-left: -50vw;
+  }
+
+  /* ============ WEEKS LIST ============ */
+  .weeks-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3xl);
+    padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-3xl);
+  }
+
+  .week-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    align-items: stretch;
+  }
+  .week-header-line { height: 1px; background: var(--color-border-default); width: 100%; }
+  .week-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--spacing-sm);
+  }
+  .week-label {
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .btn-add-work {
+    background: var(--color-surface-inverse);
+    color: var(--color-text-on-accent);
+    border: none;
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: 'Open Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-add-work .icon-plus {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+  .btn-add-work .icon-plus svg { width: 100%; height: 100%; }
+
+  .task-rows { display: flex; flex-direction: column; }
+  .week-empty-hint {
+    margin: 0;
+    padding: var(--spacing-md) var(--spacing-sm);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    opacity: 0.6;
+  }
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2xl);
+    padding: var(--spacing-md) var(--spacing-sm) var(--spacing-md) var(--spacing-xl);
+    border-bottom: 1px solid var(--color-text-primary);
+    cursor: pointer;
+  }
+  .task-row:first-child { border-top: 1px solid var(--color-text-primary); }
+  .task-row:hover { background: rgba(255,255,255,0.06); }
+  .task-row .state-icon { width: 38px; height: 20.45px; flex-shrink: 0; cursor: pointer; }
+  .task-row .state-icon svg { width: 100%; height: 100%; }
+  .task-row .state-icon:hover { opacity: 0.75; }
+  .task-label {
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    margin: 0;
+  }
+
+  /* ============ COLLAPSED WEEKS ============ */
+  .collapsed-weeks { display: flex; flex-direction: column; gap: var(--spacing-3xl); }
+  .week-collapsed {
+    background: rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  .week-collapsed .week-header-content { padding: 0 var(--spacing-lg); height: 27px; }
+  .week-collapsed .icon-chevron-collapse {
+    width: 18px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-accent-primary);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .week-collapsed .icon-chevron-collapse svg { width: 18px; height: 24px; }
+
+  /* ============ LOG TODAY (fixed bottom button) ============
+     A single circular "LOG TODAY" button sitting inside the eye-shape
+     decoration, pinned to the bottom of the viewport. Tapping it is what
+     takes you to the separate typing/mic screen — that screen is its own
+     page (Stage 1 builds it next), this is just the entry point. */
+  .weeks-list { padding-bottom: 0; }
+
+  /* ============ DAILY LOG (below the weeks) ============
+     Whatever gets typed/spoken into the LOG TODAY bar shows up here, newest
+     first, each with the date it was logged. Reuses the same header pattern
+     (line - label - line) as a week, and the same bottom padding trick the
+     weeks-list used to have, since this is now the last section before the
+     fixed LOG TODAY bar at the bottom of the screen. */
+  .log-history {
+    padding: var(--spacing-xl) var(--spacing-lg) clamp(140px, 20vw, 210px);
+    margin-top: var(--spacing-xl);
+    border-top: 1px solid var(--color-text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  .log-section-title {
+    margin: 0;
+    padding-left: var(--spacing-sm);
+    font-size: clamp(28px, 3.6vw, 40px);
+    letter-spacing: 0.5px;
+  }
+  .log-entry-rows { display: flex; flex-direction: column; }
+  .log-entry {
+    padding: var(--spacing-md) var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    border-bottom: 1px solid var(--color-border-default);
+  }
+  .log-entry:first-child { border-top: 1px solid var(--color-text-primary); }
+  .log-entry-date {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--color-accent-primary);
+  }
+  .log-entry-text {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 16px;
+  }
+  .log-entry-empty {
+    margin: 0;
+    padding: var(--spacing-md) var(--spacing-sm);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 14px;
+    opacity: 0.6;
+  }
+
+  .log-bar {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: var(--content-max);
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .log-bar[hidden] { display: none; } /* [hidden] needs this override, same as the other toggled elements */
+  /* Wrapper that the eye SVG and the button both size against, so the
+     button's position/size is a fixed % of the eye's own box (matching
+     Figma's exact ratios) instead of drifting independently on resize. */
+  .log-bar-eye-wrap {
+    position: relative;
+    width: min(90%, 420px);
+    aspect-ratio: 511 / 276;
+  }
+  .log-bar-eye {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .log-today-btn {
+    position: absolute;
+    /* Exact ratios from Figma: circle is 185.379px inside a 512x275.54
+       eye box, offset left 163px / top 45.34px. */
+    left: 31.8%;
+    top: 16.5%;
+    width: 36.2%;
+    height: 67.3%;
+    border-radius: 50%;
+    background: var(--color-accent-primary);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .log-today-btn span {
+    font-family: "Facade Sud", sans-serif;
+    font-size: clamp(20px, 2.2vw, 32px);
+    line-height: 1.15;
+    color: var(--color-text-on-accent);
+  }
+  /* [hidden] must win over the display:flex rules above, or toggling the
+     attribute in JS silently does nothing (this was the bug). */
+  .log-today-btn[hidden],
+  .log-input-row[hidden] {
+    display: none;
+  }
+
+  /* State 2: type/mic input, replaces the button in the same spot */
+  .log-input-row {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: 6%;
+    width: 78%;
+    pointer-events: auto;
+  }
+  .type-field {
+    background: var(--color-accent-primary);
+    border-radius: var(--radius-full);
+    padding: 8% 10%;
+    flex: 1;
+    min-width: 0;
+  }
+  .type-field-input {
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--color-text-on-accent);
+    outline: none;
+    padding-bottom: var(--spacing-xs);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: clamp(14px, 1.8vw, 20px);
+    color: var(--color-text-on-accent);
+  }
+  .type-field-input::placeholder { color: var(--color-text-on-accent); opacity: 1; }
+  .btn-mic {
+    position: relative;
+    width: 22%;
+    aspect-ratio: 1;
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  .btn-mic svg.bg { width: 100%; height: 100%; display: block; }
+  .btn-mic svg.mic {
+    position: absolute;
+    width: 40%;
+    height: 40%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ============ ADD/EDIT WORK MODAL ============
+     Opens over this same page when ADD WORK is tapped — not a separate
+     page. Corners are intentionally sharp (radius: 0), matching Figma's
+     actual modal spec, not the rounded card I mistakenly built before. */
+  .dim-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(3.75px);
+    -webkit-backdrop-filter: blur(3.75px);
+    z-index: 10;
+  }
+  .dim-overlay[hidden] { display: none; }
+
+  .modal-wrap {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    padding: clamp(60px, 10vh, 98px) var(--spacing-lg) var(--spacing-lg);
+    overflow-y: auto;
+    pointer-events: none;
+  }
+  .modal-wrap[hidden] { display: none; }
+  .modal {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 600px;
+    height: fit-content;
+    background: var(--color-bg-card);
+    border-radius: 0;
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3xl);
+    color: var(--color-text-on-light);
+  }
+  .modal-header-block { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+  .modal-header-row { display: flex; align-items: center; justify-content: space-between; height: 30px; }
+  .modal-title {
+    background: var(--color-bg-surface);
+    color: var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs) 12px;
+    font-size: 16px;
+    font-family: 'Open Sans', sans-serif;
+    margin: 0;
+    letter-spacing: 0.3px;
+  }
+  .drag-handle { background: var(--color-bg-surface); width: 36px; height: 5px; border: none; padding: 0; cursor: pointer; }
+  .modal-divider { height: 1px; background: var(--color-bg-surface); width: 100%; }
+
+  .field-row { display: flex; gap: var(--spacing-md); }
+  .field-number { font-size: 20px; flex-shrink: 0; margin: 0; }
+  .field-content { display: flex; flex-direction: column; gap: var(--spacing-md); flex: 1; min-width: 0; }
+  .field-label { font-size: 20px; margin: 0; }
+
+  .text-field-input {
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--color-text-on-light);
+    outline: none;
+    padding-bottom: var(--spacing-xs);
+    font-family: 'Open Sans', sans-serif;
+    font-size: 20px;
+    color: var(--color-text-on-light);
+  }
+  .text-field-input::placeholder { color: rgba(33,33,33,0.4); }
+  textarea.text-field-input { resize: none; font-family: 'Open Sans', sans-serif; line-height: 1.3; padding-top: 0; }
+
+  .assign-wrap { display: flex; flex-direction: column; gap: var(--spacing-md); }
+  .assign-label {
+    background: var(--color-bg-surface);
+    color: var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs) 12px;
+    font-size: 16px;
+    width: fit-content;
+    margin: 0;
+  }
+  .chip-row { display: flex; gap: var(--spacing-md); flex-wrap: wrap; }
+  .chip {
+    border-radius: 33px;
+    padding: var(--spacing-sm) 12px;
+    font-size: 20px;
+    min-width: 133px;
+    text-align: center;
+    background: var(--color-bg-surface);
+    color: var(--color-border-default);
+    border: none;
+    cursor: pointer;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .chip.selected {
+    background: var(--color-accent-primary);
+    color: var(--color-bg-surface);
+    border: 1px solid var(--color-bg-surface);
+  }
+
+  .button-row { display: flex; align-items: center; justify-content: space-between; }
+  .btn-modal {
+    border: 0.649px solid var(--color-bg-surface);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 24px;
+    line-height: 1.3;
+    color: var(--color-bg-surface);
+    cursor: pointer;
+  }
+  .btn-save { background: var(--color-accent-primary); }
+  .btn-delete { background: var(--color-danger); }
+
+  /* ============ MONTH PICKER ============ */
+  .screen-header .chevron { transition: transform 0.2s ease; }
+  .screen-header .chevron.open { transform: rotate(180deg); }
+
+  .month-picker-panel {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: var(--content-max);
+    z-index: 20;
+    pointer-events: none;
+  }
+  .month-picker-panel[hidden] { display: none; }
+  .month-picker-inner {
+    pointer-events: auto;
+    position: absolute;
+    top: 97px;
+    left: var(--spacing-lg);
+    right: var(--spacing-lg);
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+  }
+  .month-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px var(--spacing-lg);
+    background: none;
+    border: none;
+    width: 100%;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 20px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    text-align: left;
+  }
+  .month-row.current { background: var(--color-accent-primary); color: var(--color-text-on-accent); }
+  .month-row + .month-row { border-top: 1px solid var(--color-border-default); }
+  .month-row .row-chevron { width: 18px; height: 18px; flex-shrink: 0; color: var(--color-accent-primary); }
+  .month-row.current .row-chevron { color: var(--color-text-on-accent); }
+  .month-row .row-chevron svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+  <div class="app-frame">
+
+    <div class="person-nav">
+      <a href="index.html">
+        <svg viewBox="0 0 20 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0.530273 36.5303L18.5303 18.5303L0.530272 0.530329" stroke="#19FF55" stroke-width="1.5"/>
+        </svg>
+        <span id="personNameLabel">NABH</span>
+      </a>
+    </div>
+
+    <div class="screen-header">
+      <h1 class="display screen-header-title" id="screenHeaderTitle"></h1>
+      <button class="chevron" id="monthChevronBtn" aria-label="Change month">
+        <svg width="20" height="38" viewBox="0 0 20 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0.530273 36.5303L18.5303 18.5303L0.530272 0.530329" stroke="#19FF55" stroke-width="1.5"/>
+        </svg>
+      </button>
+    </div>
+    <div class="top-divider"></div>
+
+    <!-- Month Picker panel — rows are built by JS from whichever months
+         actually have data. Right now that's just this month, since we're
+         starting fresh; past months will appear here automatically as they
+         happen. -->
+    <div class="month-picker-panel" id="monthPickerPanel" hidden>
+      <div class="month-picker-inner" id="monthPickerInner"></div>
+    </div>
+
+    <!-- Weeks are now built entirely by JS from the Firestore data below,
+         so switching months (or adding/editing/deleting a task) can
+         actually change what's rendered here instead of this being fixed
+         markup. -->
+    <div class="weeks-list" id="weeksList"></div>
+
+    <!-- Daily Log — whatever gets typed into the LOG TODAY bar appears here,
+         newest entry first, with the date it was logged. -->
+    <div class="log-history">
+      <h2 class="display log-section-title">DAILY LOG</h2>
+      <div class="log-entry-rows" id="logEntryRows"></div>
+    </div>
+
+    <!-- Log Today (fixed bottom button — links to the separate Log Today screen) -->
+    <div class="log-bar">
+      <div class="log-bar-eye-wrap">
+        <svg class="log-bar-eye" viewBox="0 0 511 276" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+          <path d="M255 0C361.997 0 456.187 54.7694 511 137.769C456.187 220.771 361.997 275.54 255 275.54C148.003 275.54 53.8134 220.771 -1 137.769C53.8136 54.7692 148.003 0.000255753 255 0Z" fill="#F0F0F0"/>
+        </svg>
+        <button class="log-today-btn" id="logTodayBtn" aria-label="Log today">
+          <span class="display">LOG<br>TODAY</span>
+        </button>
+        <div class="log-input-row" id="logInputRow" hidden>
+          <div class="type-field">
+            <input class="type-field-input" type="text" placeholder="TYPE" autocomplete="off">
+          </div>
+          <button class="btn-mic" aria-label="Log by voice">
+            <svg class="bg" viewBox="0 0 74 74" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 36.9995C0.0001774 16.5653 16.5656 0 36.9998 0C57.4344 8.88042e-05 74 16.5654 74 36.9995C74 57.4337 57.4344 74 36.9998 74C16.5655 74 0 57.4337 0 36.9995Z" fill="#1AFF55"/></svg>
+            <svg class="mic" viewBox="0 0 20 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.88599 1.35681L9.89791 1.12865L9.89207 1.1285L9.88599 1.35681ZM14.8313 6.15857H15.0597V6.15855L14.8313 6.15857ZM14.8313 18.3158V18.5442H15.0597V18.3158H14.8313ZM4.35474 18.3158H4.12634V18.5442H4.35474V18.3158ZM4.35474 6.15857L4.12634 6.15855V6.15857H4.35474ZM9.59302 1.349L9.59911 1.1206L9.59301 1.1206L9.59302 1.349ZM9.88599 1.35681L9.87407 1.5849C12.7477 1.73505 14.6028 4.17147 14.6029 6.15858L14.8313 6.15857L15.0597 6.15855C15.0595 3.93294 13.0187 1.29179 9.8979 1.12873L9.88599 1.35681ZM14.8313 6.15857H14.6029V18.3158H14.8313H15.0597V6.15857H14.8313ZM14.8313 18.3158V18.0874H4.35474V18.3158V18.5442H14.8313V18.3158ZM4.35474 18.3158H4.58313V6.15857H4.35474H4.12634V18.3158H4.35474ZM4.35474 6.15857L4.58313 6.15858C4.58327 4.10663 6.56029 1.57753 9.59303 1.57739L9.59302 1.349L9.59301 1.1206C6.30039 1.12076 4.12649 3.86203 4.12634 6.15855L4.35474 6.15857ZM9.59302 1.349L9.58693 1.57731L9.8799 1.58513L9.88599 1.35681L9.89207 1.1285L9.59911 1.12069L9.59302 1.349Z" fill="#212121"/><path d="M2.34473 11.4932V20.52H9.59253" stroke="#212121" stroke-width="0.45679" stroke-linecap="round"/><path d="M16.8403 11.4932V20.52H9.59253" stroke="#212121" stroke-width="0.45679" stroke-linecap="round"/><path d="M9.59277 20.3042V25.7857" stroke="#212121" stroke-width="0.45679"/><path d="M5.75464 25.7268H13.3978" stroke="#212121" stroke-width="0.45679" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Add/Edit Work modal — hidden until ADD WORK is tapped -->
+  <div class="dim-overlay" id="dimOverlay" hidden></div>
+  <div class="modal-wrap" id="modalWrap" hidden>
+    <div class="modal">
+      <div class="modal-header-block">
+        <div class="modal-header-row">
+          <p class="modal-title" id="modalTitle">Add Work</p>
+          <button class="drag-handle" id="closeModalBtn" aria-label="Close"></button>
+        </div>
+        <div class="modal-divider"></div>
+      </div>
+
+      <div class="field-row">
+        <p class="field-number">1.</p>
+        <div class="field-content">
+          <p class="field-label">What's the work?</p>
+          <input class="text-field-input" id="fieldWork" type="text" placeholder="eg. Blend Animation">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <p class="field-number">2.</p>
+        <div class="field-content">
+          <p class="field-label">When to finish the work</p>
+          <input class="text-field-input" id="fieldDue" type="text" placeholder="eg. Blend Animation">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <p class="field-number">3.</p>
+        <div class="field-content">
+          <p class="field-label">Notes</p>
+          <textarea class="text-field-input" id="fieldNotes" rows="3" placeholder="eg. Notes about this task, dependencies, anything useful..."></textarea>
+        </div>
+      </div>
+
+      <div class="assign-wrap">
+        <p class="assign-label">ASSIGN</p>
+        <div class="chip-row">
+          <button class="chip selected" data-person="NONE">No one</button>
+          <button class="chip" data-person="ADI">ADI</button>
+          <button class="chip" data-person="AVI">AVI</button>
+          <button class="chip" data-person="NABH">NABH</button>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button class="btn-modal btn-save">SAVE</button>
+        <button class="btn-modal btn-delete">DELETE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase: real shared database (Stage 3). Uses the compat SDK loaded
+       via plain script tags — no build tools needed, works straight off
+       this static file. -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+
+  <script>
+    // Which person this page is showing comes from the link that opened it,
+    // e.g. person.html?person=nabh — set by the Home screen's person cards.
+    // No real routing/login yet (that's Stage 3) — this just reads the URL.
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPerson = (urlParams.get('person') || 'nabh').toUpperCase();
+    document.getElementById('personNameLabel').textContent = currentPerson;
+    document.title = 'Studio OS — ' + currentPerson + ' (preview)';
+
+    // Tapping LOG TODAY swaps the button for the type/mic input, in the
+    // same spot inside the eye shape — per your confirmation that these
+    // are two states of one control, not two separate screens.
+    const logBar = document.querySelector('.log-bar');
+    const logTodayBtn = document.getElementById('logTodayBtn');
+    const logInputRow = document.getElementById('logInputRow');
+    const typeFieldInput = logInputRow.querySelector('.type-field-input');
+    const logEntryRows = document.getElementById('logEntryRows');
+
+    // ============ FIRESTORE (real shared database) ============
+    // One document per person, e.g. people/NABH — holds their daily log and
+    // their months/weeks/tasks. `db` and `firebase` come from firebase-config.js.
+    const personDocRef = db.collection('people').doc(currentPerson);
+
+    // Local (not UTC) YYYY-MM-DD, so it lines up with calendar days the way
+    // a person actually experiences them, not shifted by timezone.
+    function formatISODate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
+    // ============ DAILY LOG ============
+    // Typing something and hitting Enter saves it straight to Firestore, in
+    // this person's `dailyLog` array (newest first) — visible to everyone,
+    // and to the Home screen. `onSnapshot` below re-renders automatically
+    // whenever this changes, whether from this tab, another tab, or another
+    // device entirely.
+    let logEntries = []; // kept in sync by the Firestore listener, not written to directly
+
+    function showLogTodayCta() {
+      logBar.hidden = false;
+      logInputRow.hidden = true;
+      logTodayBtn.hidden = false;
+    }
+    function showAlreadyLoggedCta() {
+      // Whole eye + button disappears once today's log is in — comes back
+      // on its own the next real calendar day.
+      logBar.hidden = true;
+    }
+
+    logTodayBtn.addEventListener('click', () => {
+      logTodayBtn.hidden = true;
+      logInputRow.hidden = false;
+      typeFieldInput.focus();
+    });
+
+    function formatLogDate(dateISOString) {
+      return new Date(dateISOString).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function renderLogHistory() {
+      logEntryRows.innerHTML = '';
+      if (logEntries.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'log-entry-empty';
+        empty.textContent = 'Nothing logged yet — whatever you type into LOG TODAY will show up here.';
+        logEntryRows.appendChild(empty);
+        return;
+      }
+      logEntries.forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'log-entry';
+        row.innerHTML =
+          '<p class="log-entry-date"></p>' +
+          '<p class="log-entry-text"></p>';
+        row.querySelector('.log-entry-date').textContent = formatLogDate(entry.timestamp);
+        row.querySelector('.log-entry-text').textContent = entry.text;
+        logEntryRows.appendChild(row);
+      });
+      const todayISO = formatISODate(new Date());
+      if (logEntries.some(e => e.dateISO === todayISO)) showAlreadyLoggedCta(); else showLogTodayCta();
+    }
+
+    function submitLogEntry() {
+      const text = typeFieldInput.value.trim();
+      if (!text) return; // nothing typed — don't add an empty entry
+      const entry = { text, dateISO: formatISODate(new Date()), timestamp: new Date().toISOString() };
+      const updatedLog = [entry, ...logEntries];
+      typeFieldInput.value = '';
+      personDocRef.set({ dailyLog: updatedLog }, { merge: true });
+      // No manual re-render here — the onSnapshot listener below will pick
+      // this write up (usually within a fraction of a second) and redraw.
+    }
+    typeFieldInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitLogEntry();
+    });
+
+    // ADD WORK opens the modal empty (Add mode). Clicking an existing task
+    // row opens the same modal pre-filled (Edit mode) — one modal, two
+    // states, matching how Figma's Add Work / Edit Work frames are really
+    // the same design with different data.
+    const dimOverlay = document.getElementById('dimOverlay');
+    const modalWrap = document.getElementById('modalWrap');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const modalTitle = document.getElementById('modalTitle');
+    const fieldWork = document.getElementById('fieldWork');
+    const fieldDue = document.getElementById('fieldDue');
+    const fieldNotes = document.getElementById('fieldNotes');
+    const btnSave = document.querySelector('.btn-save');
+    const btnDelete = document.querySelector('.btn-delete');
+    const weeksListEl = document.getElementById('weeksList');
+    const monthChevronBtn = document.getElementById('monthChevronBtn');
+    const monthPickerPanel = document.getElementById('monthPickerPanel');
+    const screenHeaderTitle = document.getElementById('screenHeaderTitle');
+
+    // ============ REAL DATES ============
+    // The current month is read from the device's real clock, and "Week N"
+    // boundaries are real calendar weeks of that month (Week 1 = days 1-7,
+    // Week 2 = days 8-14, etc).
+    const today = new Date();
+    const CURRENT_YEAR = today.getFullYear();
+    const CURRENT_MONTH_INDEX = today.getMonth(); // 0 = January
+    const CURRENT_MONTH = today.toLocaleString('en-US', { month: 'long' }).toUpperCase();
+    const TODAY_DAY = today.getDate();
+
+    function daysInMonth(year, monthIndex) {
+      return new Date(year, monthIndex + 1, 0).getDate();
+    }
+    function weekCountForMonth(year, monthIndex) {
+      return Math.ceil(daysInMonth(year, monthIndex) / 7);
+    }
+    function weekLabelsForMonth(year, monthIndex) {
+      const count = weekCountForMonth(year, monthIndex);
+      return Array.from({ length: count }, (_, i) => 'WEEK ' + (i + 1));
+    }
+    // Which week (0-indexed) today's date falls into, within the current month.
+    const CURRENT_WEEK_INDEX = Math.floor((TODAY_DAY - 1) / 7);
+
+    // Seed data for a brand-new person doc (first time this person's page
+    // is ever opened) — a couple of sample tasks in whichever week contains
+    // today, so there's something to look at on day one. Firestore can't
+    // store an array of arrays, so weeks are a map keyed by "0", "1", etc.
+    // instead of a real array — same idea, just a shape Firestore allows.
+    function buildSeedMonths() {
+      const weeks = {};
+      for (let i = 0; i < weekCountForMonth(CURRENT_YEAR, CURRENT_MONTH_INDEX); i++) weeks[i] = [];
+      weeks[CURRENT_WEEK_INDEX] = [
+        { work: 'Task One that i have to finish', due: '12 August', notes: 'I will first try to do it using claude and if the expected result not achieved then move to After effects', assignee: 'AVI', state: 'Not Started' },
+        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignee: 'NONE', state: 'Started' },
+        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignee: 'NONE', state: 'Not Started' },
+        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignee: 'NONE', state: 'Full Completed' },
+      ];
+      const months = {};
+      months[CURRENT_MONTH] = weeks;
+      return months;
+    }
+
+    // Populated live from Firestore by the onSnapshot listener further down
+    // — this is the single source of truth the whole page renders from.
+    let monthsData = {};
+    let currentMonth = CURRENT_MONTH;
+    // While the modal is open: which week/task it's editing. taskIndex is
+    // null in Add mode (a new task, not yet saved).
+    let editingContext = null;
+
+    function selectChip(person) {
+      document.querySelectorAll('.chip').forEach(c => {
+        c.classList.toggle('selected', c.dataset.person === person);
+      });
+    }
+    function getSelectedChipPerson() {
+      const selected = document.querySelector('.chip.selected');
+      return selected ? selected.dataset.person : 'NONE';
+    }
+
+    function openAddModal(weekIndex) {
+      editingContext = { weekIndex, taskIndex: null };
+      modalTitle.textContent = 'Add Work';
+      fieldWork.value = '';
+      fieldDue.value = '';
+      fieldNotes.value = '';
+      selectChip('NONE'); // default Assign selection is "No one" for a brand-new task
+      btnDelete.style.display = 'none'; // nothing to delete yet in Add mode
+      dimOverlay.hidden = false;
+      modalWrap.hidden = false;
+    }
+    function openEditModal(weekIndex, taskIndex) {
+      editingContext = { weekIndex, taskIndex };
+      const task = monthsData[currentMonth][weekIndex][taskIndex];
+      modalTitle.textContent = 'EDIT Work';
+      fieldWork.value = task.work;
+      fieldDue.value = task.due;
+      fieldNotes.value = task.notes;
+      selectChip(task.assignee);
+      btnDelete.style.display = '';
+      dimOverlay.hidden = false;
+      modalWrap.hidden = false;
+    }
+    function closeModal() {
+      dimOverlay.hidden = true;
+      modalWrap.hidden = true;
+      editingContext = null;
+    }
+
+    // Writes one week's task list back to Firestore, at
+    // months.<MONTH>.<weekIndex> — the onSnapshot listener picks this up
+    // and re-renders, so there's no manual renderMonth() call needed here.
+    function saveWeekTasks(weekIndex, tasks) {
+      const fieldPath = 'months.' + currentMonth + '.' + weekIndex;
+      personDocRef.update({ [fieldPath]: tasks });
+    }
+
+    btnSave.addEventListener('click', () => {
+      const work = fieldWork.value.trim();
+      if (!work) {
+        fieldWork.focus();
+        return; // a task needs at least a name
+      }
+      const due = fieldDue.value.trim();
+      const notes = fieldNotes.value.trim();
+      const assignee = getSelectedChipPerson();
+      const { weekIndex, taskIndex } = editingContext;
+      const weekTasks = monthsData[currentMonth][weekIndex].slice(); // copy — don't mutate in place
+
+      if (taskIndex === null) {
+        weekTasks.push({ work, due, notes, assignee, state: 'Not Started' });
+      } else {
+        weekTasks[taskIndex] = { work, due, notes, assignee, state: weekTasks[taskIndex].state };
+      }
+      saveWeekTasks(weekIndex, weekTasks);
+      closeModal();
+    });
+
+    btnDelete.addEventListener('click', () => {
+      if (editingContext && editingContext.taskIndex !== null) {
+        const { weekIndex, taskIndex } = editingContext;
+        const weekTasks = monthsData[currentMonth][weekIndex].slice();
+        weekTasks.splice(taskIndex, 1);
+        saveWeekTasks(weekIndex, weekTasks);
+      }
+      closeModal();
+    });
+
+    closeModalBtn.addEventListener('click', closeModal);
+
+    // Month Picker — opens under the header, dims the rest of the page
+    // (reusing the same dim overlay the modal uses), toggles the chevron
+    // between pointing down (closed) and up (open).
+    function openMonthPicker() {
+      dimOverlay.hidden = false;
+      monthPickerPanel.hidden = false;
+      monthChevronBtn.classList.add('open');
+    }
+    function closeMonthPicker() {
+      dimOverlay.hidden = true;
+      monthPickerPanel.hidden = true;
+      monthChevronBtn.classList.remove('open');
+    }
+    // Clicking the dim background closes whichever of modal/month-picker is open.
+    dimOverlay.addEventListener('click', () => { closeModal(); closeMonthPicker(); });
+
+    monthChevronBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (monthPickerPanel.hidden) openMonthPicker(); else closeMonthPicker();
+    });
+
+    function switchMonth(month) {
+      document.querySelectorAll('.month-row').forEach(r => r.classList.toggle('current', r.dataset.month === month));
+      closeMonthPicker();
+      renderMonth(month);
+    }
+
+    // Month picker rows are built from whichever months actually exist in
+    // Firestore for this person — right now just this month, since we're
+    // starting fresh. Past months will show up here automatically as they
+    // happen and get saved.
+    const monthPickerInner = document.getElementById('monthPickerInner');
+    function renderMonthPickerRows() {
+      monthPickerInner.innerHTML = '';
+      Object.keys(monthsData).forEach(month => {
+        const row = document.createElement('button');
+        row.className = 'month-row' + (month === currentMonth ? ' current' : '');
+        row.dataset.month = month;
+        row.innerHTML =
+          month +
+          '<span class="row-chevron"><svg viewBox="0 0 19 25" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 2L15 12.5L2 23" stroke="currentColor" stroke-width="1.5"/></svg></span>';
+        row.addEventListener('click', () => switchMonth(month));
+        monthPickerInner.appendChild(row);
+      });
+    }
+
+    // Work state icons — clicking an icon cycles it through its 4 states.
+    // These are the exact SVGs exported from the real Figma components
+    // (Component / State Icon), not hand-drawn stand-ins.
+    const stateIconSVGs = {
+      'Not Started': '<svg width="52" height="28" viewBox="0 0 52 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25.8682 0.557617C36.3513 0.557673 45.5926 5.85753 51.0605 13.9209C45.5927 21.9846 36.3515 27.2851 25.8682 27.2852C15.3844 27.2852 6.14174 21.9851 0.673828 13.9209C6.1418 5.85704 15.3846 0.557642 25.8682 0.557617Z" stroke="#F0F0F0" stroke-width="1.115"/></svg>',
+      'Started': '<svg width="52" height="28" viewBox="0 0 52 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25.8682 0.557617C36.3513 0.557673 45.5926 5.85753 51.0605 13.9209C45.5927 21.9847 36.3515 27.2851 25.8682 27.2852C15.3844 27.2852 6.14174 21.9851 0.673828 13.9209C6.1418 5.85704 15.3846 0.557642 25.8682 0.557617Z" stroke="#F0F0F0" stroke-width="1.115"/><path d="M25.8369 4.74243C30.667 4.74245 34.5819 8.65312 34.582 13.4758C34.582 18.2987 30.667 22.2102 25.8369 22.2102C21.0069 22.21 17.0927 18.2986 17.0927 13.4758C17.0928 8.6532 21.007 4.74262 25.8369 4.74243Z" stroke="#F0F0F0" stroke-width="1.115"/></svg>',
+      'Half Completed': '<svg width="52" height="28" viewBox="0 0 52 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25.868 0C36.6797 0 46.1973 5.53428 51.736 13.9212C46.1973 22.3083 36.6797 27.8424 25.868 27.8424C15.0563 27.8424 5.53872 22.3083 0 13.9212C5.53874 5.53426 15.0563 2.5843e-05 25.868 0ZM25.837 4.63051C20.6996 4.63051 16.5349 8.7903 16.5349 13.9216C16.5349 19.0529 20.6996 23.213 25.837 23.213C30.9745 23.213 35.1392 19.0529 35.1392 13.9216C35.1392 8.79033 30.9745 4.63053 25.837 4.63051Z" fill="#1AFF55"/></svg>',
+      'Full Completed': '<svg width="56" height="28" viewBox="0 0 56 28" fill="none" xmlns="http://www.w3.org/2000/svg"><g filter="url(#glow-full)"><path d="M29.8682 0.557617C40.3513 0.557673 49.5926 5.85753 55.0605 13.9209C49.5927 21.9846 40.3515 27.2851 29.8682 27.2852C19.3844 27.2852 10.1417 21.9851 4.67383 13.9209C10.1418 5.85704 19.3846 0.557642 29.8682 0.557617ZM29.8369 4.07324C24.3923 4.07329 19.9776 8.48209 19.9775 13.9219C19.9777 19.3616 24.3924 23.7705 29.8369 23.7705C35.2816 23.7705 39.6961 19.3616 39.6963 13.9219C39.6963 8.48207 35.2817 4.07327 29.8369 4.07324Z" fill="#1AFF55" stroke="#1AFF55" stroke-width="1.115"/><path d="M20.502 13.9235C20.502 8.75089 24.6953 4.55762 29.8679 4.55762C35.0407 4.55764 39.234 8.75091 39.234 13.9235C39.234 19.0961 35.0407 23.2896 29.8679 23.2896C24.6953 23.2896 20.502 19.0961 20.502 13.9235Z" fill="white"/></g><defs><filter id="glow-full" x="0" y="-4" width="59.736" height="35.8424" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="2"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 0.101961 0 0 0 0 1 0 0 0 0 0.333333 0 0 0 1 0"/><feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/><feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/></filter></defs></svg>'
+    };
+    const stateOrder = ['Not Started', 'Started', 'Half Completed', 'Full Completed'];
+
+    function paintStateIcon(el) {
+      el.innerHTML = stateIconSVGs[el.dataset.state];
+    }
+
+    // weekIndex/taskIndex let a click on the icon save the new state to
+    // Firestore, not just repaint the on-screen SVG — so it survives a
+    // month switch, a refresh, and shows up on anyone else viewing this
+    // person's page too.
+    function attachStateIconListener(el, weekIndex, taskIndex) {
+      paintStateIcon(el);
+      el.addEventListener('click', (e) => {
+        e.stopPropagation(); // don't also open the Edit Work modal via the row's own click handler
+        const current = stateOrder.indexOf(el.dataset.state);
+        const next = stateOrder[(current + 1) % stateOrder.length];
+        el.dataset.state = next; // paint immediately, don't wait on the round-trip to Firestore
+        paintStateIcon(el);
+        const weekTasks = monthsData[currentMonth][weekIndex].slice();
+        weekTasks[taskIndex] = { ...weekTasks[taskIndex], state: next };
+        saveWeekTasks(weekIndex, weekTasks);
+      });
+    }
+
+    // Chip selection (single-select) — clicking a chip in the modal just
+    // changes which one looks selected; getSelectedChipPerson() reads it
+    // back when Save is pressed.
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => selectChip(chip.dataset.person));
+    });
+
+    // ============ RENDERING ============
+    // Builds one task row from a monthsData entry, wired to open the Edit
+    // modal on click and to cycle its state icon.
+    function buildTaskRow(weekIndex, taskIndex, task) {
+      const row = document.createElement('div');
+      row.className = 'task-row';
+
+      const icon = document.createElement('span');
+      icon.className = 'state-icon';
+      icon.dataset.state = task.state;
+      attachStateIconListener(icon, weekIndex, taskIndex);
+
+      const label = document.createElement('p');
+      label.className = 'task-label';
+      label.textContent = task.work;
+
+      row.appendChild(icon);
+      row.appendChild(label);
+      row.addEventListener('click', () => openEditModal(weekIndex, taskIndex));
+      return row;
+    }
+
+    // Builds an unlocked/expanded week: header + its tasks. The ADD WORK
+    // button only shows up for the one week that's actually happening right
+    // now — a week that's already passed only makes sense to review/edit,
+    // not add new work to, so it's left out for those (canAddWork = false).
+    function buildExpandedWeek(label, weekIndex, tasks, canAddWork) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML =
+        '<div class="week-header">' +
+          '<div class="week-header-line"></div>' +
+          '<div class="week-header-content">' +
+            '<p class="week-label">' + label + '</p>' +
+            (canAddWork ?
+              '<button class="btn-add-work">' +
+                '<span class="icon-plus">' +
+                  '<svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                    '<line x1="8.05598" y1="0" x2="8.05598" y2="13.7236" stroke="#212121" stroke-width="1.78973"/>' +
+                    '<line x1="13.7236" y1="7.75424" x2="0" y2="7.75424" stroke="#212121" stroke-width="1.78973"/>' +
+                  '</svg>' +
+                '</span>' +
+                'ADD WORK' +
+              '</button>'
+            : '') +
+          '</div>' +
+          '<div class="week-header-line"></div>' +
+        '</div>' +
+        '<div class="task-rows"></div>';
+      if (canAddWork) {
+        wrap.querySelector('.btn-add-work').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openAddModal(weekIndex);
+        });
+      }
+      const rowsEl = wrap.querySelector('.task-rows');
+      if (tasks.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'week-empty-hint';
+        empty.textContent = 'Kaam karle Bhadwe';
+        rowsEl.appendChild(empty);
+      } else {
+        tasks.forEach((task, taskIndex) => rowsEl.appendChild(buildTaskRow(weekIndex, taskIndex, task)));
+      }
+      return wrap;
+    }
+
+    // Builds a locked week: just the header + lock icon, nothing clickable —
+    // this is a future week in the current month that hasn't started yet.
+    function buildLockedWeek(label) {
+      const wrap = document.createElement('div');
+      wrap.className = 'week-collapsed';
+      wrap.innerHTML =
+        '<div class="week-header-line"></div>' +
+        '<div class="week-header-content">' +
+          '<p class="week-label">' + label + '</p>' +
+          '<span class="icon-chevron-collapse">' +
+            '<svg width="19" height="25" viewBox="0 0 19 25" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18.0586 8.77237V24.2519H0.515625V8.77237H18.0586Z" stroke="#1AFF55" stroke-width="1.03195" stroke-linejoin="round"/><path d="M16.5101 8.25535C16.5101 8.25535 16.5111 0.515961 9.29161 0.515961C2.07214 0.515961 2.06421 8.25535 2.06421 8.25535" stroke="#1AFF55" stroke-width="1.03195"/></svg>' +
+          '</span>' +
+        '</div>' +
+        '<div class="week-header-line"></div>';
+      return wrap;
+    }
+
+    // Redraws the whole weeks list for a given month from monthsData.
+    // Called on load, after switching months, and by the Firestore listener
+    // every time the underlying data changes (from this tab or any other).
+    function renderMonth(month) {
+      currentMonth = month;
+      screenHeaderTitle.textContent = month;
+      weeksListEl.innerHTML = '';
+      const isCurrentMonth = (month === CURRENT_MONTH);
+      const labels = weekLabelsForMonth(CURRENT_YEAR, CURRENT_MONTH_INDEX);
+      const weeksForMonth = monthsData[month] || {};
+      Object.keys(weeksForMonth).sort((a, b) => a - b).map(k => weeksForMonth[k]).forEach((tasks, weekIndex) => {
+        // Locked = a future week of the CURRENT month (hasn't happened yet).
+        // Everything up to and including today's week is unlocked, same as
+        // every week of a past month would be.
+        const locked = isCurrentMonth && weekIndex > CURRENT_WEEK_INDEX;
+        // Only the week actually happening right now gets ADD WORK — a
+        // week that's already passed is just for review/editing, not for
+        // adding new tasks to.
+        const canAddWork = isCurrentMonth && weekIndex === CURRENT_WEEK_INDEX;
+        weeksListEl.appendChild(
+          locked ? buildLockedWeek(labels[weekIndex]) : buildExpandedWeek(labels[weekIndex], weekIndex, tasks, canAddWork)
+        );
+      });
+      renderMonthPickerRows();
+    }
+
+    // ============ LOAD + LIVE SYNC ============
+    // First: make sure this person's document exists (create it with the
+    // seed data if this is genuinely the first time). Then: listen for any
+    // change to it, forever — that's what makes edits show up live on
+    // other tabs/devices without anyone hitting refresh.
+    personDocRef.get().then(snap => {
+      if (!snap.exists) {
+        return personDocRef.set({ months: buildSeedMonths(), dailyLog: [] });
+      }
+    }).then(() => {
+      personDocRef.onSnapshot(snap => {
+        const data = snap.data() || {};
+        monthsData = data.months || {};
+        logEntries = data.dailyLog || [];
+        renderMonth(currentMonth);
+        renderLogHistory();
+      });
+    }).catch(err => {
+      console.error('Could not connect to Firestore:', err);
+    });
+  </script>
+
+</body>
+</html>
