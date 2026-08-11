@@ -442,7 +442,14 @@
     cursor: pointer;
     padding: 0;
   }
-  .btn-mic svg.bg { width: 100%; height: 100%; display: block; }
+  .btn-mic svg.bg { width: 100%; height: 100%; display: block; transition: transform 0.15s ease; }
+  /* Pulses gently while it's actively listening, so it's obvious the mic
+     is on and not just a dead button. */
+  .btn-mic.listening svg.bg { animation: mic-pulse 1s ease-in-out infinite; }
+  @keyframes mic-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.75; }
+  }
   .btn-mic svg.mic {
     position: absolute;
     width: 40%;

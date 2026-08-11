@@ -134,6 +134,55 @@ window.authReady.then(function () {
       if (e.key === 'Enter') submitLogEntry();
     });
 
+    // ============ VOICE LOGGING (free, built into the browser) ============
+    // Chrome and Safari both ship a free speech-to-text engine (the Web
+    // Speech API) — no account, API key, or cost. Tapping the mic starts
+    // listening, types what you say into the same box as if you'd typed
+    // it, and you still hit Enter (or tap the mic again) to save it. Not
+    // supported in every browser (e.g. Firefox), so if it's missing we
+    // just hide the button rather than showing something broken.
+    const micBtn = logInputRow.querySelector('.btn-mic');
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
+      micBtn.hidden = true;
+    } else {
+      const recognition = new SpeechRecognitionAPI();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false; // only give us finished phrases
+      recognition.maxAlternatives = 1;
+      let isListening = false;
+
+      recognition.addEventListener('result', (event) => {
+        const heard = event.results[0][0].transcript;
+        // Append rather than overwrite, in case they'd already typed part
+        // of the entry before switching to voice.
+        typeFieldInput.value = (typeFieldInput.value.trim() + ' ' + heard).trim();
+      });
+      recognition.addEventListener('end', () => {
+        isListening = false;
+        micBtn.classList.remove('listening');
+      });
+      recognition.addEventListener('error', (event) => {
+        isListening = false;
+        micBtn.classList.remove('listening');
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          alert('Voice logging needs microphone access — check your browser/site permissions and try again.');
+        }
+      });
+
+      micBtn.addEventListener('click', () => {
+        if (isListening) {
+          recognition.stop();
+          return;
+        }
+        isListening = true;
+        micBtn.classList.add('listening');
+        typeFieldInput.focus();
+        recognition.start();
+      });
+    }
+
     // ADD WORK opens the modal empty (Add mode). Clicking an existing task
     // row opens the same modal pre-filled (Edit mode) — one modal, two
     // states, matching how Figma's Add Work / Edit Work frames are really
