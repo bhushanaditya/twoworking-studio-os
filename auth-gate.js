@@ -13,6 +13,11 @@
 // fail) to read data before the PIN has been entered.
 window.authReady = new Promise((resolve) => {
   firebase.auth().onAuthStateChanged(user => {
+    // The very first callback just tells us whether an existing sign-in
+    // was restored — until then we show nothing (a blank screen) rather
+    // than flashing the PIN form, which is what caused the flicker on
+    // every page you already had access to.
+    document.body.classList.add('authChecked');
     if (user) {
       document.body.classList.add('authed');
       resolve(user);

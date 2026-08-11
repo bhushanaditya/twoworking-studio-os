@@ -302,7 +302,10 @@
     justify-content: center;
   }
   body.authed #pinGate { display: none; }
-  .pin-gate-inner {
+  /* Hidden until we actually know you're logged out — avoids a flash of
+     the PIN form on pages you already had access to (see auth-gate.js). */
+  .pin-gate-inner { display: none; }
+  body.authChecked:not(.authed) .pin-gate-inner {
     display: flex;
     flex-direction: column;
     align-items: center;
