@@ -14,3 +14,15 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+// Cache Firestore data on-device (IndexedDB) so that on your NEXT visit —
+// or when you tap between Home and a person's page — the app can paint
+// instantly from what's already stored locally, then quietly sync any
+// changes in the background. Without this, every single page load waits
+// on a fresh network round-trip before showing anything.
+db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+  // Fails only if you have the site open in two tabs at once (synchronizeTabs
+  // handles that) or on very old browsers — safe to ignore either way, it
+  // just means this particular tab won't get the cache speed-up.
+  console.warn('Offline cache not enabled:', err.code);
+});
