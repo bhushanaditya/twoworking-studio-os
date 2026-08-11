@@ -163,19 +163,37 @@ window.authReady.then(function () {
         recognition.lang = 'en-US';
         recognition.interimResults = false; // only give us finished phrases
         recognition.maxAlternatives = 1;
+        let heardSomething = false;
+
+        // Some Chromium-based browsers (Dia, Arc, Brave, etc.) claim to
+        // support this API but their speech backend silently never
+        // responds — no result, no error, nothing. Real Chrome and Safari
+        // don't have this problem. This timeout is our only way to catch
+        // that "silently stuck" case and actually tell you what's wrong,
+        // instead of the mic just doing nothing forever.
+        const stuckTimeout = setTimeout(() => {
+          if (activeRecognition === recognition && !heardSomething) {
+            recognition.stop();
+            alert('Voice input isn\'t responding in this browser. This happens on some browsers (e.g. Dia, Arc, Brave) that don\'t fully support built-in speech recognition — try Chrome or Safari instead.');
+          }
+        }, 6000);
 
         recognition.addEventListener('result', (event) => {
+          heardSomething = true;
+          clearTimeout(stuckTimeout);
           const heard = event.results[0][0].transcript;
           // Append rather than overwrite, in case they'd already typed part
           // of the entry before switching to voice.
           typeFieldInput.value = (typeFieldInput.value.trim() + ' ' + heard).trim();
         });
         recognition.addEventListener('end', () => {
+          clearTimeout(stuckTimeout);
           isListening = false;
           activeRecognition = null;
           micBtn.classList.remove('listening');
         });
         recognition.addEventListener('error', (event) => {
+          clearTimeout(stuckTimeout);
           isListening = false;
           activeRecognition = null;
           micBtn.classList.remove('listening');
@@ -195,6 +213,7 @@ window.authReady.then(function () {
         } catch (err) {
           // start() throws if called in an invalid state — treat it the
           // same as any other failure to start.
+          clearTimeout(stuckTimeout);
           isListening = false;
           activeRecognition = null;
           micBtn.classList.remove('listening');
