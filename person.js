@@ -147,39 +147,67 @@ window.authReady.then(function () {
     if (!SpeechRecognitionAPI) {
       micBtn.hidden = true;
     } else {
-      const recognition = new SpeechRecognitionAPI();
-      recognition.lang = 'en-US';
-      recognition.interimResults = false; // only give us finished phrases
-      recognition.maxAlternatives = 1;
       let isListening = false;
+      let activeRecognition = null;
 
-      recognition.addEventListener('result', (event) => {
-        const heard = event.results[0][0].transcript;
-        // Append rather than overwrite, in case they'd already typed part
-        // of the entry before switching to voice.
-        typeFieldInput.value = (typeFieldInput.value.trim() + ' ' + heard).trim();
-      });
-      recognition.addEventListener('end', () => {
-        isListening = false;
-        micBtn.classList.remove('listening');
-      });
-      recognition.addEventListener('error', (event) => {
-        isListening = false;
-        micBtn.classList.remove('listening');
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          alert('Voice logging needs microphone access — check your browser/site permissions and try again.');
+      // We build a brand-new recognition object every time the mic is
+      // tapped, instead of reusing one. Reusing one caused the bug where,
+      // right after the browser's permission prompt, the very first
+      // recognition session ends up in a broken/aborted state on some
+      // phones (especially iPhone Safari) — and every tap after that
+      // silently does nothing because it's still that same broken object.
+      // A fresh instance each time sidesteps that entirely.
+      function startListening() {
+        const recognition = new SpeechRecognitionAPI();
+        activeRecognition = recognition;
+        recognition.lang = 'en-US';
+        recognition.interimResults = false; // only give us finished phrases
+        recognition.maxAlternatives = 1;
+
+        recognition.addEventListener('result', (event) => {
+          const heard = event.results[0][0].transcript;
+          // Append rather than overwrite, in case they'd already typed part
+          // of the entry before switching to voice.
+          typeFieldInput.value = (typeFieldInput.value.trim() + ' ' + heard).trim();
+        });
+        recognition.addEventListener('end', () => {
+          isListening = false;
+          activeRecognition = null;
+          micBtn.classList.remove('listening');
+        });
+        recognition.addEventListener('error', (event) => {
+          isListening = false;
+          activeRecognition = null;
+          micBtn.classList.remove('listening');
+          // "aborted" and "no-speech" happen in normal use (you stopped it,
+          // or paused too long) — not worth alerting about. Anything else
+          // (permission denied, no mic, no network) we do want to surface,
+          // since otherwise it just looks like voice logging is broken.
+          if (event.error !== 'aborted' && event.error !== 'no-speech') {
+            alert('Voice logging couldn\'t start (' + event.error + '). Check that this site has microphone access in your browser/phone settings, then try again.');
+          }
+        });
+
+        try {
+          recognition.start();
+          isListening = true;
+          micBtn.classList.add('listening');
+        } catch (err) {
+          // start() throws if called in an invalid state — treat it the
+          // same as any other failure to start.
+          isListening = false;
+          activeRecognition = null;
+          micBtn.classList.remove('listening');
         }
-      });
+      }
 
       micBtn.addEventListener('click', () => {
-        if (isListening) {
-          recognition.stop();
+        if (isListening && activeRecognition) {
+          activeRecognition.stop();
           return;
         }
-        isListening = true;
-        micBtn.classList.add('listening');
         typeFieldInput.focus();
-        recognition.start();
+        startListening();
       });
     }
 
