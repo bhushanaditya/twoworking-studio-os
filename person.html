@@ -351,46 +351,29 @@
     max-width: var(--content-max);
     display: flex;
     justify-content: center;
+    padding: var(--spacing-md);
+    background: linear-gradient(to top, var(--color-bg-primary) 60%, transparent);
     pointer-events: none;
   }
   .log-bar[hidden] { display: none; } /* [hidden] needs this override, same as the other toggled elements */
-  /* Wrapper that the eye SVG and the button both size against, so the
-     button's position/size is a fixed % of the eye's own box (matching
-     Figma's exact ratios) instead of drifting independently on resize. */
-  .log-bar-eye-wrap {
-    position: relative;
-    width: min(90%, 420px);
-    aspect-ratio: 511 / 276;
-  }
-  .log-bar-eye {
-    position: absolute;
-    inset: 0;
+  .log-bar-inner {
     width: 100%;
-    height: 100%;
-    display: block;
+    max-width: 480px;
+    pointer-events: auto;
   }
   .log-today-btn {
-    position: absolute;
-    /* Exact ratios from Figma: circle is 185.379px inside a 512x275.54
-       eye box, offset left 163px / top 45.34px. */
-    left: 31.8%;
-    top: 16.5%;
-    width: 36.2%;
-    height: 67.3%;
-    border-radius: 50%;
+    width: 100%;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-full);
     background: var(--color-accent-primary);
     border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
     cursor: pointer;
-    pointer-events: auto;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
   }
   .log-today-btn span {
     font-family: "Facade Sud", sans-serif;
-    font-size: clamp(20px, 2.2vw, 32px);
-    line-height: 1.15;
+    font-size: clamp(16px, 2vw, 22px);
+    letter-spacing: 1px;
     color: var(--color-text-on-accent);
   }
   /* [hidden] must win over the display:flex rules above, or toggling the
@@ -400,42 +383,55 @@
     display: none;
   }
 
-  /* State 2: type/mic input, replaces the button in the same spot */
+  /* State 2: type/mic input, replaces the button in the same spot. Simple
+     flex row rather than positioned inside the old eye graphic — easier to
+     read and to let the text box grow as you type or speak. */
   .log-input-row {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
     display: flex;
-    align-items: center;
-    gap: 6%;
-    width: 78%;
-    pointer-events: auto;
+    align-items: flex-end;
+    gap: var(--spacing-sm);
+    width: 100%;
   }
   .type-field {
     background: var(--color-accent-primary);
-    border-radius: var(--radius-full);
-    padding: 8% 10%;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-sm) var(--spacing-md);
     flex: 1;
     min-width: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
   }
   .type-field-input {
+    display: block;
     width: 100%;
     background: none;
     border: none;
-    border-bottom: 1px solid var(--color-text-on-accent);
     outline: none;
-    padding-bottom: var(--spacing-xs);
+    resize: none;
+    overflow: hidden; /* height is controlled by JS as you type/speak, not a scrollbar */
     font-family: 'Open Sans', sans-serif;
     font-weight: 300;
-    font-size: clamp(14px, 1.8vw, 20px);
+    font-size: 16px;
+    line-height: 1.4;
     color: var(--color-text-on-accent);
+    max-height: 40vh;
   }
-  .type-field-input::placeholder { color: var(--color-text-on-accent); opacity: 1; }
+  .type-field-input::placeholder { color: var(--color-text-on-accent); opacity: 0.85; }
+  /* Shows "Listening…" / "Transcribing…" while voice logging is active, so
+     it's clear something is happening even before any text appears. */
+  .log-status-text {
+    margin: var(--spacing-xs) 0 0;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: var(--color-text-on-accent);
+    opacity: 0.85;
+  }
+  .log-status-text[hidden] { display: none; }
   .btn-mic {
     position: relative;
-    width: 22%;
-    aspect-ratio: 1;
+    width: 52px;
+    height: 52px;
     flex-shrink: 0;
     border: none;
     background: none;
@@ -461,6 +457,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
   }
+
 
   /* ============ ADD/EDIT WORK MODAL ============
      Opens over this same page when ADD WORK is tapped — not a separate
@@ -757,16 +754,14 @@
          comes back, so you never see a flash of "LOG TODAY" that then
          disappears a second later. -->
     <div class="log-bar" hidden>
-      <div class="log-bar-eye-wrap">
-        <svg class="log-bar-eye" viewBox="0 0 511 276" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-          <path d="M255 0C361.997 0 456.187 54.7694 511 137.769C456.187 220.771 361.997 275.54 255 275.54C148.003 275.54 53.8134 220.771 -1 137.769C53.8136 54.7692 148.003 0.000255753 255 0Z" fill="#F0F0F0"/>
-        </svg>
+      <div class="log-bar-inner">
         <button class="log-today-btn" id="logTodayBtn" aria-label="Log today">
-          <span class="display">LOG<br>TODAY</span>
+          <span class="display">LOG TODAY</span>
         </button>
         <div class="log-input-row" id="logInputRow" hidden>
           <div class="type-field">
-            <input class="type-field-input" type="text" placeholder="TYPE" autocomplete="off">
+            <textarea class="type-field-input" placeholder="TYPE OR TAP THE MIC" autocomplete="off" rows="1"></textarea>
+            <p class="log-status-text" id="logStatusText" hidden></p>
           </div>
           <button class="btn-mic" aria-label="Log by voice">
             <svg class="bg" viewBox="0 0 74 74" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0 36.9995C0.0001774 16.5653 16.5656 0 36.9998 0C57.4344 8.88042e-05 74 16.5654 74 36.9995C74 57.4337 57.4344 74 36.9998 74C16.5655 74 0 57.4337 0 36.9995Z" fill="#1AFF55"/></svg>
@@ -840,7 +835,7 @@
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth-gate.js"></script>
 
-  <script defer src="./person.js?v=4"></script>
+  <script defer src="./person.js?v=5"></script>
 
 </body>
 </html>

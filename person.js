@@ -8,13 +8,32 @@ window.authReady.then(function () {
     document.title = 'Studio OS — ' + currentPerson + ' (preview)';
 
     // Tapping LOG TODAY swaps the button for the type/mic input, in the
-    // same spot inside the eye shape — per your confirmation that these
-    // are two states of one control, not two separate screens.
+    // same spot — per your confirmation that these are two states of one
+    // control, not two separate screens.
     const logBar = document.querySelector('.log-bar');
     const logTodayBtn = document.getElementById('logTodayBtn');
     const logInputRow = document.getElementById('logInputRow');
     const typeFieldInput = logInputRow.querySelector('.type-field-input');
+    const logStatusText = document.getElementById('logStatusText');
     const logEntryRows = document.getElementById('logEntryRows');
+
+    // Grows the text box as you type or as voice text is inserted, instead
+    // of scrolling inside a fixed-height box — makes longer entries easy
+    // to read back before you save them.
+    function autoGrowTypeField() {
+      typeFieldInput.style.height = 'auto';
+      typeFieldInput.style.height = typeFieldInput.scrollHeight + 'px';
+    }
+    typeFieldInput.addEventListener('input', autoGrowTypeField);
+
+    function setLogStatus(text) {
+      if (text) {
+        logStatusText.textContent = text;
+        logStatusText.hidden = false;
+      } else {
+        logStatusText.hidden = true;
+      }
+    }
 
     // ============ FIRESTORE (real shared database) ============
     // One document per person, e.g. people/NABH — holds their daily log and
@@ -126,12 +145,18 @@ window.authReady.then(function () {
       const entry = { text, dateISO: formatISODate(new Date()), timestamp: new Date().toISOString() };
       const updatedLog = [entry, ...logEntries];
       typeFieldInput.value = '';
+      autoGrowTypeField(); // shrink the box back down now that it's empty
       saveDailyLog(updatedLog);
       // No manual re-render here — the onSnapshot listener below will pick
       // this write up (usually within a fraction of a second) and redraw.
     }
     typeFieldInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submitLogEntry();
+      // Enter submits (like before); Shift+Enter still adds a new line,
+      // since this is now a growing text box rather than a single-line one.
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitLogEntry();
+      }
     });
 
     // ============ VOICE LOGGING (free, runs inside the browser) ============
@@ -200,6 +225,7 @@ window.authReady.then(function () {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (err) {
           alert('Voice logging needs microphone access — check your browser/site permissions and try again.');
+          setLogStatus('');
           return;
         }
 
@@ -216,6 +242,7 @@ window.authReady.then(function () {
           isRecording = false;
           micBtn.classList.remove('listening');
           micBtn.classList.add('transcribing');
+          setLogStatus('Transcribing…');
           try {
             const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
             const samples = await blobToMonoFloat32(blob);
@@ -226,17 +253,20 @@ window.authReady.then(function () {
               // Append rather than overwrite, in case they'd already typed
               // part of the entry before switching to voice.
               typeFieldInput.value = (typeFieldInput.value.trim() + ' ' + heard).trim();
+              autoGrowTypeField();
             }
           } catch (err) {
             console.error(err);
             alert('Could not transcribe that — check your connection (the first time, it needs to download a small speech model) and try again.');
           }
           micBtn.classList.remove('transcribing');
+          setLogStatus('');
         });
 
         mediaRecorder.start();
         isRecording = true;
         micBtn.classList.add('listening');
+        setLogStatus('Listening… tap the mic again when you\'re done');
         // Start loading the model in the background while they're still
         // talking, so it's more likely to already be ready by the time
         // they stop and we need it.
