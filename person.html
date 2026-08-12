@@ -55,6 +55,10 @@
     background: var(--color-bg-surface);
     color: var(--color-text-primary);
     font-family: 'Open Sans', sans-serif;
+    /* Stops the "rubber-band" bounce past the top/bottom edge on
+       trackpads/phones — the page just stops at its real edges instead of
+       overscrolling and springing back. */
+    overscroll-behavior: none;
   }
   body { min-height: 100vh; }
 
@@ -252,12 +256,27 @@
      weeks-list used to have, since this is now the last section before the
      fixed LOG TODAY bar at the bottom of the screen. */
   .log-history {
+    position: relative;
     padding: var(--spacing-xl) var(--spacing-lg) clamp(140px, 20vw, 210px);
     margin-top: var(--spacing-xl);
-    border-top: 1px solid var(--color-text-primary);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
+  }
+  /* The app's content column is capped at --content-max and centered, so a
+     plain border-top here would stop at that column's edges on a wide
+     screen instead of reaching the actual left/right edges of the browser
+     window. This pseudo-element breaks out of that column deliberately,
+     using the classic "100vw centered via left:50%" trick, so the divider
+     always runs the full width of the screen regardless of screen size. */
+  .log-history::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    border-top: 1px solid var(--color-text-primary);
   }
   .log-section-title {
     margin: 0;
@@ -841,6 +860,11 @@
   <script defer src="./auth-gate.js"></script>
 
   <script defer src="./person.js?v=6"></script>
+  <!-- Auto-update: this page checks every 30s whether a new version has
+       been pushed and reloads itself automatically if so — nobody has to
+       remember to hard-refresh. See update-checker.js. -->
+  <script>window.APP_VERSION = 1;</script>
+  <script defer src="./update-checker.js"></script>
 
 </body>
 </html>
