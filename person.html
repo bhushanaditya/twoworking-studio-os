@@ -348,10 +348,25 @@
     display: flex;
     justify-content: center;
     padding: var(--spacing-md);
-    background: linear-gradient(to top, var(--color-bg-surface) 60%, transparent);
     pointer-events: none;
   }
   .log-bar[hidden] { display: none; } /* [hidden] needs this override, same as the other toggled elements */
+  /* The gradient fade needs to reach the actual screen edges, but .log-bar
+     itself is capped at --content-max and centered (so its button/input
+     don't stretch edge-to-edge on a wide screen). Same fix as the Daily
+     Log divider: a pseudo-element breaks out to the full viewport width
+     using the "100vw centered via left:50%" trick, independent of
+     whatever width the content column above it is capped at. */
+  .log-bar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    background: linear-gradient(to top, var(--color-bg-surface) 60%, transparent);
+    z-index: -1;
+  }
   .log-bar-inner {
     width: 100%;
     max-width: 480px;
@@ -840,7 +855,7 @@
   <!-- Auto-update: this page checks every 30s whether a new version has
        been pushed and reloads itself automatically if so — nobody has to
        remember to hard-refresh. See update-checker.js. -->
-  <script>window.APP_VERSION = 2;</script>
+  <script>window.APP_VERSION = 3;</script>
   <script defer src="./update-checker.js"></script>
 
 </body>
