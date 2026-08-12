@@ -751,8 +751,12 @@
       <div class="log-entry-rows" id="logEntryRows"></div>
     </div>
 
-    <!-- Log Today (fixed bottom button — links to the separate Log Today screen) -->
-    <div class="log-bar">
+    <!-- Log Today (fixed bottom button — links to the separate Log Today screen).
+         Hidden by default — person.js reveals it (or leaves it hidden, if
+         today's already logged) only once Firestore's first real answer
+         comes back, so you never see a flash of "LOG TODAY" that then
+         disappears a second later. -->
+    <div class="log-bar" hidden>
       <div class="log-bar-eye-wrap">
         <svg class="log-bar-eye" viewBox="0 0 511 276" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
           <path d="M255 0C361.997 0 456.187 54.7694 511 137.769C456.187 220.771 361.997 275.54 255 275.54C148.003 275.54 53.8134 220.771 -1 137.769C53.8136 54.7692 148.003 0.000255753 255 0Z" fill="#F0F0F0"/>
@@ -836,7 +840,7 @@
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth-gate.js"></script>
 
-  <script defer src="./person.js"></script>
+  <script defer src="./person.js?v=4"></script>
 
 </body>
 </html>
