@@ -134,99 +134,122 @@ window.authReady.then(function () {
       if (e.key === 'Enter') submitLogEntry();
     });
 
-    // ============ VOICE LOGGING (free, built into the browser) ============
-    // Chrome and Safari both ship a free speech-to-text engine (the Web
-    // Speech API) — no account, API key, or cost. Tapping the mic starts
-    // listening, types what you say into the same box as if you'd typed
-    // it, and you still hit Enter (or tap the mic again) to save it. Not
-    // supported in every browser (e.g. Firefox), so if it's missing we
-    // just hide the button rather than showing something broken.
+    // ============ VOICE LOGGING (free, runs inside the browser) ============
+    // Some browsers your team uses (Dia, Arc, Brave) don't have a working
+    // built-in speech-to-text engine, so instead of relying on the
+    // browser's own transcription we do it ourselves: record your voice as
+    // audio, then run it through a small free AI transcription model
+    // (Whisper) that downloads once and runs entirely on your own device
+    // from then on — no account, no API key, no per-use cost, and it works
+    // identically in every browser because it doesn't depend on anything
+    // browser-specific. Tradeoff: the very first time anyone uses it, the
+    // browser downloads that model (a one-time ~40-75MB download, then
+    // cached), and transcribing takes a few seconds after you stop
+    // talking rather than being instant.
     const micBtn = logInputRow.querySelector('.btn-mic');
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (!SpeechRecognitionAPI) {
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      // Can't record audio at all here — hide rather than show something broken.
       micBtn.hidden = true;
     } else {
-      let isListening = false;
-      let activeRecognition = null;
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let isRecording = false;
+      let transcriberPromise = null; // loaded once, then reused for every recording
 
-      // We build a brand-new recognition object every time the mic is
-      // tapped, instead of reusing one. Reusing one caused the bug where,
-      // right after the browser's permission prompt, the very first
-      // recognition session ends up in a broken/aborted state on some
-      // phones (especially iPhone Safari) — and every tap after that
-      // silently does nothing because it's still that same broken object.
-      // A fresh instance each time sidesteps that entirely.
-      function startListening() {
-        const recognition = new SpeechRecognitionAPI();
-        activeRecognition = recognition;
-        recognition.lang = 'en-US';
-        recognition.interimResults = false; // only give us finished phrases
-        recognition.maxAlternatives = 1;
-        let heardSomething = false;
-
-        // Some Chromium-based browsers (Dia, Arc, Brave, etc.) claim to
-        // support this API but their speech backend silently never
-        // responds — no result, no error, nothing. Real Chrome and Safari
-        // don't have this problem. This timeout is our only way to catch
-        // that "silently stuck" case and actually tell you what's wrong,
-        // instead of the mic just doing nothing forever.
-        const stuckTimeout = setTimeout(() => {
-          if (activeRecognition === recognition && !heardSomething) {
-            recognition.stop();
-            alert('Voice input isn\'t responding in this browser. This happens on some browsers (e.g. Dia, Arc, Brave) that don\'t fully support built-in speech recognition — try Chrome or Safari instead.');
-          }
-        }, 6000);
-
-        recognition.addEventListener('result', (event) => {
-          heardSomething = true;
-          clearTimeout(stuckTimeout);
-          const heard = event.results[0][0].transcript;
-          // Append rather than overwrite, in case they'd already typed part
-          // of the entry before switching to voice.
-          typeFieldInput.value = (typeFieldInput.value.trim() + ' ' + heard).trim();
-        });
-        recognition.addEventListener('end', () => {
-          clearTimeout(stuckTimeout);
-          isListening = false;
-          activeRecognition = null;
-          micBtn.classList.remove('listening');
-        });
-        recognition.addEventListener('error', (event) => {
-          clearTimeout(stuckTimeout);
-          isListening = false;
-          activeRecognition = null;
-          micBtn.classList.remove('listening');
-          // "aborted" and "no-speech" happen in normal use (you stopped it,
-          // or paused too long) — not worth alerting about. Anything else
-          // (permission denied, no mic, no network) we do want to surface,
-          // since otherwise it just looks like voice logging is broken.
-          if (event.error !== 'aborted' && event.error !== 'no-speech') {
-            alert('Voice logging couldn\'t start (' + event.error + '). Check that this site has microphone access in your browser/phone settings, then try again.');
-          }
-        });
-
-        try {
-          recognition.start();
-          isListening = true;
-          micBtn.classList.add('listening');
-        } catch (err) {
-          // start() throws if called in an invalid state — treat it the
-          // same as any other failure to start.
-          clearTimeout(stuckTimeout);
-          isListening = false;
-          activeRecognition = null;
-          micBtn.classList.remove('listening');
+      // Loads the transcription model the first time it's needed (or
+      // earlier, in the background, once you start talking) and reuses it
+      // after that — so only your very first voice log on this device is slow.
+      function getTranscriber() {
+        if (!transcriberPromise) {
+          transcriberPromise = import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2')
+            .then(({ pipeline, env }) => {
+              env.allowLocalModels = false;
+              return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en');
+            });
         }
+        return transcriberPromise;
+      }
+
+      function pickMimeType() {
+        const candidates = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+        return candidates.find((t) => MediaRecorder.isTypeSupported(t)) || '';
+      }
+
+      // The AI model expects plain mono audio at 16kHz — this decodes
+      // whatever format the browser recorded (webm/mp4/etc.) and resamples
+      // it into that exact shape.
+      async function blobToMonoFloat32(blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+        const targetRate = 16000;
+        const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
+        const source = offlineCtx.createBufferSource();
+        source.buffer = decoded;
+        source.connect(offlineCtx.destination);
+        source.start(0);
+        const rendered = await offlineCtx.startRendering();
+        audioCtx.close();
+        return rendered.getChannelData(0);
+      }
+
+      async function startRecording() {
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (err) {
+          alert('Voice logging needs microphone access — check your browser/site permissions and try again.');
+          return;
+        }
+
+        const mimeType = pickMimeType();
+        audioChunks = [];
+        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+        mediaRecorder.addEventListener('dataavailable', (e) => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        });
+
+        mediaRecorder.addEventListener('stop', async () => {
+          stream.getTracks().forEach((track) => track.stop());
+          isRecording = false;
+          micBtn.classList.remove('listening');
+          micBtn.classList.add('transcribing');
+          try {
+            const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+            const samples = await blobToMonoFloat32(blob);
+            const transcriber = await getTranscriber();
+            const result = await transcriber(samples);
+            const heard = (result.text || '').trim();
+            if (heard) {
+              // Append rather than overwrite, in case they'd already typed
+              // part of the entry before switching to voice.
+              typeFieldInput.value = (typeFieldInput.value.trim() + ' ' + heard).trim();
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Could not transcribe that — check your connection (the first time, it needs to download a small speech model) and try again.');
+          }
+          micBtn.classList.remove('transcribing');
+        });
+
+        mediaRecorder.start();
+        isRecording = true;
+        micBtn.classList.add('listening');
+        // Start loading the model in the background while they're still
+        // talking, so it's more likely to already be ready by the time
+        // they stop and we need it.
+        getTranscriber();
       }
 
       micBtn.addEventListener('click', () => {
-        if (isListening && activeRecognition) {
-          activeRecognition.stop();
+        if (isRecording) {
+          mediaRecorder.stop();
           return;
         }
         typeFieldInput.focus();
-        startListening();
+        startRecording();
       });
     }
 

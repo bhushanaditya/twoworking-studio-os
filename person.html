@@ -446,6 +446,9 @@
   /* Pulses gently while it's actively listening, so it's obvious the mic
      is on and not just a dead button. */
   .btn-mic.listening svg.bg { animation: mic-pulse 1s ease-in-out infinite; }
+  /* Dims (no pulse) while your recording is being transcribed, so it
+     reads as "working on it" rather than "still listening". */
+  .btn-mic.transcribing svg.bg { opacity: 0.4; animation: none; }
   @keyframes mic-pulse {
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.08); opacity: 0.75; }
