@@ -20,12 +20,37 @@ window.authReady.then(function () {
     function renderStreak(container, dailyLog) {
       container.innerHTML = '';
       const loggedDates = (dailyLog || []).map(e => e.dateISO);
+      let filledCount = 0;
       for (let day = 1; day <= todayDayOfMonth; day++) {
         const iso = formatISODate(new Date(year, monthIndex, day));
+        const isFilled = loggedDates.includes(iso);
+        if (isFilled) filledCount++;
         const dot = document.createElement('div');
-        dot.className = 'streak-dot ' + (loggedDates.includes(iso) ? 'filled' : 'empty');
+        dot.className = 'streak-dot ' + (isFilled ? 'filled' : 'empty');
         container.appendChild(dot);
       }
+      return filledCount;
+    }
+
+    // Whoever has logged the most days this month (most filled circles)
+    // moves to the top of the list — re-sorted live, every time anyone's
+    // log changes, not just once on page load.
+    const peopleList = document.querySelector('.people-list');
+    const personCards = {};
+    ['nabh', 'avi', 'adi'].forEach((person) => {
+      const header = document.querySelector('.person-card-header[data-person="' + person + '"]');
+      if (header) personCards[person] = header.closest('.person-card');
+    });
+    const streakCounts = { nabh: 0, avi: 0, adi: 0 };
+
+    function reorderPeopleList() {
+      Object.keys(personCards)
+        .sort((a, b) => streakCounts[b] - streakCounts[a]) // most filled circles first
+        .forEach((person) => {
+          // appendChild on a node already in the DOM moves it rather than
+          // duplicating it, so this just re-orders the existing cards.
+          peopleList.appendChild(personCards[person]);
+        });
     }
 
     // One live listener per person — each updates that person's streak dots
@@ -36,7 +61,10 @@ window.authReady.then(function () {
         const dailyLog = data.dailyLog || [];
 
         const streakEl = document.querySelector('[data-streak="' + person + '"]');
-        if (streakEl) renderStreak(streakEl, dailyLog);
+        if (streakEl) {
+          streakCounts[person] = renderStreak(streakEl, dailyLog);
+          reorderPeopleList();
+        }
 
         const statusEl = document.querySelector('[data-status="' + person + '"]');
         if (statusEl) {
