@@ -181,6 +181,7 @@ window.authReady.then(function () {
       let audioChunks = [];
       let isRecording = false;
       let transcriberPromise = null; // loaded once, then reused for every recording
+      const originalPlaceholder = typeFieldInput.placeholder;
 
       // Loads the transcription model the first time it's needed (or
       // earlier, in the background, once you start talking) and reuses it
@@ -261,11 +262,17 @@ window.authReady.then(function () {
           }
           micBtn.classList.remove('transcribing');
           setLogStatus('');
+          typeFieldInput.placeholder = originalPlaceholder;
         });
 
         mediaRecorder.start();
         isRecording = true;
         micBtn.classList.add('listening');
+        // Swap out the static placeholder while listening — the status
+        // text below already says "Listening…", so leaving the old
+        // "TYPE OR TAP THE MIC" hint showing at the same time just reads
+        // like nothing happened when you tapped the mic.
+        typeFieldInput.placeholder = '';
         setLogStatus('Listening… tap the mic again when you\'re done');
         // Start loading the model in the background while they're still
         // talking, so it's more likely to already be ready by the time

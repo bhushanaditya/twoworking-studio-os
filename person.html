@@ -388,16 +388,21 @@
      read and to let the text box grow as you type or speak. */
   .log-input-row {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: var(--spacing-sm);
     width: 100%;
   }
   .type-field {
     background: var(--color-accent-primary);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     padding: var(--spacing-sm) var(--spacing-md);
     flex: 1;
     min-width: 0;
+    min-height: 52px; /* matches the mic button's height so they line up */
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.15);
   }
   .type-field-input {
@@ -835,7 +840,7 @@
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth-gate.js"></script>
 
-  <script defer src="./person.js?v=5"></script>
+  <script defer src="./person.js?v=6"></script>
 
 </body>
 </html>
