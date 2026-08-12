@@ -71,6 +71,21 @@ window.authReady.then(function () {
           const todaysEntry = dailyLog.find(e => e.dateISO === todayISO);
           statusEl.textContent = todaysEntry ? todaysEntry.text : '';
         }
+
+        // Highlighted "NABH has completed half of X" banner — only shown
+        // for the rest of the day the state change actually happened on;
+        // person.js is what writes this field whenever a task's state icon
+        // gets tapped, on the actual owner's document.
+        const activityEl = document.querySelector('[data-activity="' + person + '"]');
+        if (activityEl) {
+          const activity = data.lastActivity;
+          if (activity && activity.dateISO === todayISO) {
+            activityEl.textContent = activity.text;
+            activityEl.hidden = false;
+          } else {
+            activityEl.hidden = true;
+          }
+        }
       });
     });
 

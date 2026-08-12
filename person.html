@@ -13,6 +13,11 @@
 <link rel="stylesheet" href="./tokens.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Tells Android Chrome (and other browsers with an auto "force dark"
+     feature) that this page is already intentionally dark-themed, so it
+     stops trying to "helpfully" re-color things itself. -->
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#212121">
 <title>Studio OS — Person Page (preview)</title>
 <style>
   @font-face {
@@ -576,6 +581,85 @@
      that could look broken/invisible against it. */
   input[type="date"].text-field-input { color-scheme: light; }
 
+  /* ============ SUBTASKS (inside Add/Edit Work modal) ============ */
+  .subtask-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  .subtask-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+  .subtask-checkbox {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 1.5px solid var(--color-text-on-light);
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .subtask-checkbox.done {
+    background: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+  }
+  .subtask-checkbox svg { width: 12px; height: 12px; display: none; }
+  .subtask-checkbox.done svg { display: block; }
+  .subtask-text {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 16px;
+    color: var(--color-text-on-light);
+  }
+  .subtask-checkbox.done + .subtask-text { text-decoration: line-through; opacity: 0.55; }
+  .subtask-remove-btn {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--color-text-on-light);
+    opacity: 0.5;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  .subtask-remove-btn:hover { opacity: 1; }
+  .subtask-add-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing-sm);
+  }
+  .subtask-add-input { flex: 1; min-width: 0; }
+  .btn-subtask-add {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    border: none;
+    background: var(--color-accent-primary);
+    color: var(--color-bg-surface);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  /* Small "2/4 done" hint shown under a task's name on the week list, only
+     when that task actually has subtasks. */
+  .subtask-progress {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+    font-size: 13px;
+    opacity: 0.65;
+  }
+
   .assign-wrap { display: flex; flex-direction: column; gap: var(--spacing-md); }
   .assign-label {
     background: var(--color-bg-surface);
@@ -854,6 +938,18 @@
         </div>
       </div>
 
+      <div class="field-row">
+        <p class="field-number">4.</p>
+        <div class="field-content">
+          <p class="field-label">Subtasks</p>
+          <div class="subtask-list" id="subtaskList"></div>
+          <div class="subtask-add-row">
+            <input class="text-field-input subtask-add-input" id="subtaskInput" type="text" placeholder="eg. Brainstorm ideas">
+            <button class="btn-subtask-add" id="subtaskAddBtn" aria-label="Add subtask" type="button">+</button>
+          </div>
+        </div>
+      </div>
+
       <div class="assign-wrap">
         <p class="assign-label">ASSIGN</p>
         <div class="chip-row">
@@ -880,11 +976,11 @@
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth-gate.js"></script>
 
-  <script defer src="./person.js?v=8"></script>
+  <script defer src="./person.js?v=9"></script>
   <!-- Auto-update: this page checks every 30s whether a new version has
        been pushed and reloads itself automatically if so — nobody has to
        remember to hard-refresh. See update-checker.js. -->
-  <script>window.APP_VERSION = 8;</script>
+  <script>window.APP_VERSION = 10;</script>
   <script defer src="./update-checker.js?v=2"></script>
 
 </body>

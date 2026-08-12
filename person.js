@@ -385,6 +385,83 @@ window.authReady.then(function () {
       return selected ? selected.dataset.person : 'NONE';
     }
 
+    // ============ SUBTASKS (inside the Add/Edit Work modal) ============
+    // A subtask is just { text, done }. In Add mode (brand-new task, not
+    // saved yet) these only live in this local array and get bundled in
+    // with everything else when SAVE is pressed. In Edit mode, every
+    // add/check/remove writes straight back to Firestore immediately —
+    // same "instant" feel as the state icon — instead of waiting for you
+    // to also hit SAVE on the whole task.
+    const subtaskListEl = document.getElementById('subtaskList');
+    const subtaskInput = document.getElementById('subtaskInput');
+    const subtaskAddBtn = document.getElementById('subtaskAddBtn');
+    const subtaskCheckSVG = '<svg viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 5L4.5 8.5L11 1" stroke="#212121" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    let editingSubtasks = [];
+
+    function renderSubtaskList() {
+      subtaskListEl.innerHTML = '';
+      editingSubtasks.forEach((subtask, subtaskIndex) => {
+        const row = document.createElement('div');
+        row.className = 'subtask-row';
+
+        const checkbox = document.createElement('button');
+        checkbox.type = 'button';
+        checkbox.className = 'subtask-checkbox' + (subtask.done ? ' done' : '');
+        checkbox.innerHTML = subtaskCheckSVG;
+        checkbox.addEventListener('click', () => {
+          editingSubtasks[subtaskIndex] = { ...subtask, done: !subtask.done };
+          persistSubtasksIfEditing();
+          renderSubtaskList();
+        });
+
+        const text = document.createElement('p');
+        text.className = 'subtask-text';
+        text.textContent = subtask.text;
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'subtask-remove-btn';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', 'Remove subtask');
+        remove.addEventListener('click', () => {
+          editingSubtasks.splice(subtaskIndex, 1);
+          persistSubtasksIfEditing();
+          renderSubtaskList();
+        });
+
+        row.appendChild(checkbox);
+        row.appendChild(text);
+        row.appendChild(remove);
+        subtaskListEl.appendChild(row);
+      });
+    }
+
+    // Only writes to Firestore in Edit mode (a real, already-saved task to
+    // attach subtasks to) — in Add mode there's nothing to write to yet.
+    function persistSubtasksIfEditing() {
+      if (!editingContext || editingContext.taskIndex === null) return;
+      const { weekIndex, taskIndex } = editingContext;
+      const weekTasks = monthsData[currentMonth][weekIndex].slice();
+      weekTasks[taskIndex] = { ...weekTasks[taskIndex], subtasks: editingSubtasks };
+      saveWeekTasks(weekIndex, weekTasks);
+    }
+
+    function addSubtaskFromInput() {
+      const text = subtaskInput.value.trim();
+      if (!text) return;
+      editingSubtasks.push({ text, done: false });
+      subtaskInput.value = '';
+      persistSubtasksIfEditing();
+      renderSubtaskList();
+    }
+    subtaskAddBtn.addEventListener('click', addSubtaskFromInput);
+    subtaskInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addSubtaskFromInput();
+      }
+    });
+
     function openAddModal(weekIndex) {
       editingContext = { weekIndex, taskIndex: null };
       modalTitle.textContent = 'Add Work';
@@ -392,6 +469,8 @@ window.authReady.then(function () {
       fieldDue.value = '';
       fieldNotes.value = '';
       selectChip('NONE'); // default Assign selection is "No one" for a brand-new task
+      editingSubtasks = [];
+      renderSubtaskList();
       btnDelete.style.display = 'none'; // nothing to delete yet in Add mode
       dimOverlay.hidden = false;
       modalWrap.hidden = false;
@@ -404,6 +483,8 @@ window.authReady.then(function () {
       fieldDue.value = task.due;
       fieldNotes.value = task.notes;
       selectChip(task.assignee);
+      editingSubtasks = (task.subtasks || []).slice();
+      renderSubtaskList();
       btnDelete.style.display = '';
       dimOverlay.hidden = false;
       modalWrap.hidden = false;
@@ -435,9 +516,9 @@ window.authReady.then(function () {
       const weekTasks = monthsData[currentMonth][weekIndex].slice(); // copy — don't mutate in place
 
       if (taskIndex === null) {
-        weekTasks.push({ work, due, notes, assignee, state: 'Not Started' });
+        weekTasks.push({ work, due, notes, assignee, state: 'Not Started', subtasks: editingSubtasks });
       } else {
-        weekTasks[taskIndex] = { work, due, notes, assignee, state: weekTasks[taskIndex].state };
+        weekTasks[taskIndex] = { work, due, notes, assignee, state: weekTasks[taskIndex].state, subtasks: editingSubtasks };
       }
       saveWeekTasks(weekIndex, weekTasks);
       closeModal();
@@ -516,6 +597,28 @@ window.authReady.then(function () {
       el.innerHTML = stateIconSVGs[el.dataset.state];
     }
 
+    // ============ HOME PAGE ACTIVITY BANNER ============
+    // Whenever a task's state actually moves forward (not when it wraps
+    // back around to "Not Started"), we write a message onto whoever OWNS
+    // that task's document — index.js reads this and shows it as a
+    // highlighted banner on that person's home screen card for the rest
+    // of that day.
+    function buildActivityMessage(ownerName, work) {
+      return function (state) {
+        if (state === 'Started') return ownerName + ' has started "' + work + '"';
+        if (state === 'Half Completed') return ownerName + ' has completed half of "' + work + '"';
+        if (state === 'Full Completed') return ownerName + ' has completed "' + work + '"';
+        return null; // "Not Started" isn't worth announcing
+      };
+    }
+    function writeLastActivity(docRef, ownerName, work, state) {
+      const text = buildActivityMessage(ownerName, work)(state);
+      if (!text) return;
+      docRef.update({
+        lastActivity: { text, dateISO: formatISODate(new Date()), timestamp: new Date().toISOString() },
+      });
+    }
+
     // weekIndex/taskIndex let a click on the icon save the new state to
     // Firestore, not just repaint the on-screen SVG — so it survives a
     // month switch, a refresh, and shows up on anyone else viewing this
@@ -529,8 +632,10 @@ window.authReady.then(function () {
         el.dataset.state = next; // paint immediately, don't wait on the round-trip to Firestore
         paintStateIcon(el);
         const weekTasks = monthsData[currentMonth][weekIndex].slice();
-        weekTasks[taskIndex] = { ...weekTasks[taskIndex], state: next };
+        const task = weekTasks[taskIndex];
+        weekTasks[taskIndex] = { ...task, state: next };
         saveWeekTasks(weekIndex, weekTasks);
+        writeLastActivity(personDocRef, currentPerson, task.work, next);
       });
     }
 
@@ -538,7 +643,8 @@ window.authReady.then(function () {
     // someone ELSE's document (they assigned it to you) — so marking it
     // Started/Done writes back to the actual owner's doc, not your own
     // (writing to your own would just silently create a duplicate that
-    // never syncs back to them).
+    // never syncs back to them). The activity banner still credits the
+    // actual owner, not whoever tapped the icon.
     function attachForeignStateIconListener(el, owner, weekIndex, taskIndex) {
       paintStateIcon(el);
       el.addEventListener('click', (e) => {
@@ -549,9 +655,11 @@ window.authReady.then(function () {
         paintStateIcon(el);
         const ownerMonthsForThisMonth = (otherPeopleMonthsData[owner] && otherPeopleMonthsData[owner][currentMonth]) || {};
         const weekTasks = (ownerMonthsForThisMonth[weekIndex] || []).slice();
-        weekTasks[taskIndex] = { ...weekTasks[taskIndex], state: next };
+        const task = weekTasks[taskIndex];
+        weekTasks[taskIndex] = { ...task, state: next };
         const fieldPath = 'months.' + currentMonth + '.' + weekIndex;
         otherPersonDocRefs[owner].update({ [fieldPath]: weekTasks });
+        writeLastActivity(otherPersonDocRefs[owner], owner, task.work, next);
       });
     }
 
@@ -579,6 +687,15 @@ window.authReady.then(function () {
     });
 
     // ============ RENDERING ============
+    // "2/4 subtasks" hint, or null if this task has no subtasks — used
+    // under the task name so progress is visible without opening it.
+    function subtaskProgressText(task) {
+      const subtasks = task.subtasks || [];
+      if (subtasks.length === 0) return null;
+      const doneCount = subtasks.filter((s) => s.done).length;
+      return doneCount + '/' + subtasks.length + ' subtasks';
+    }
+
     // Builds one task row from a monthsData entry, wired to open the Edit
     // modal on click and to cycle its state icon.
     function buildTaskRow(weekIndex, taskIndex, task) {
@@ -590,12 +707,22 @@ window.authReady.then(function () {
       icon.dataset.state = task.state;
       attachStateIconListener(icon, weekIndex, taskIndex);
 
+      const textWrap = document.createElement('div');
+      textWrap.className = 'task-label-wrap';
       const label = document.createElement('p');
       label.className = 'task-label';
       label.textContent = task.work;
+      textWrap.appendChild(label);
+      const progressText = subtaskProgressText(task);
+      if (progressText) {
+        const progress = document.createElement('p');
+        progress.className = 'subtask-progress';
+        progress.textContent = progressText;
+        textWrap.appendChild(progress);
+      }
 
       row.appendChild(icon);
-      row.appendChild(label);
+      row.appendChild(textWrap);
       row.addEventListener('click', () => openEditModal(weekIndex, taskIndex));
       return row;
     }
@@ -624,6 +751,13 @@ window.authReady.then(function () {
       tag.textContent = 'ASSIGNED BY ' + owner;
       textWrap.appendChild(label);
       textWrap.appendChild(tag);
+      const progressText = subtaskProgressText(task);
+      if (progressText) {
+        const progress = document.createElement('p');
+        progress.className = 'subtask-progress';
+        progress.textContent = progressText;
+        textWrap.appendChild(progress);
+      }
 
       row.appendChild(icon);
       row.appendChild(textWrap);

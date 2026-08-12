@@ -13,6 +13,12 @@
 <link rel="stylesheet" href="./tokens.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Tells Android Chrome (and other browsers with an auto "force dark"
+     feature) that this page is already intentionally dark-themed, so it
+     stops trying to "helpfully" re-color things itself — which is what
+     was turning the logo's near-black pupils into flat grey circles. -->
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#212121">
 <title>Studio OS — Home (preview)</title>
 <style>
   /* ============ REAL FONT ============ */
@@ -249,6 +255,23 @@
   .person-status::before { content: '"'; }
   .person-status::after { content: '"'; }
 
+  /* Highlighted callout that appears on a person's card for the rest of
+     the day whenever they change a task's progress — e.g. "NABH has
+     completed half of Blend Animation". Disappears on its own the next
+     day (see index.js), same spirit as the streak/log CTA resetting daily. */
+  .person-activity {
+    margin: var(--spacing-sm) 0 0;
+    background: var(--color-accent-primary);
+    color: var(--color-text-on-accent);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    width: fit-content;
+  }
+  .person-activity[hidden] { display: none; }
+
   /* ============ GOAL PROGRESS (5 eyes) ============
      Same eye-shape iconography as the state icons on the Person page —
      empty (outline) or filled (glowing), just reused here as a simple
@@ -399,6 +422,7 @@
         </button>
         <div class="streak-grid" data-streak="nabh"></div>
         <p class="person-status" data-status="nabh"></p>
+        <p class="person-activity" data-activity="nabh" hidden></p>
       </div>
 
       <div class="person-card">
@@ -412,6 +436,7 @@
         </button>
         <div class="streak-grid" data-streak="avi"></div>
         <p class="person-status" data-status="avi"></p>
+        <p class="person-activity" data-activity="avi" hidden></p>
       </div>
 
       <div class="person-card">
@@ -425,6 +450,7 @@
         </button>
         <div class="streak-grid" data-streak="adi"></div>
         <p class="person-status" data-status="adi"></p>
+        <p class="person-activity" data-activity="adi" hidden></p>
       </div>
 
     </div>
@@ -442,11 +468,11 @@
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth-gate.js"></script>
 
-  <script defer src="./index.js?v=3"></script>
+  <script defer src="./index.js?v=4"></script>
   <!-- Auto-update: this page checks every 30s whether a new version has
        been pushed and reloads itself automatically if so — nobody has to
        remember to hard-refresh. See update-checker.js. -->
-  <script>window.APP_VERSION = 8;</script>
+  <script>window.APP_VERSION = 10;</script>
   <script defer src="./update-checker.js?v=2"></script>
 
 </body>
