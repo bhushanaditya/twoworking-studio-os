@@ -40,6 +40,23 @@ window.authReady.then(function () {
     // their months/weeks/tasks. `db` and `firebase` come from firebase-config.js.
     const personDocRef = db.collection('people').doc(currentPerson);
 
+    // ============ CROSS-ASSIGNED TASKS (real fix for "Assign" not working) ============
+    // Previously, picking someone else as the assignee just wrote a label
+    // onto a task that still lived only in the assigning person's own
+    // document — it never actually appeared anywhere on the assignee's own
+    // page. This reads the *other two* people's documents too (read-only)
+    // and, for whichever tasks they've assigned to whoever's page this is,
+    // shows those tasks here as well — tagged with who assigned them — so
+    // assigning actually means something.
+    const ALL_PEOPLE = ['NABH', 'AVI', 'ADI'];
+    const otherPeople = ALL_PEOPLE.filter((p) => p !== currentPerson);
+    const otherPersonDocRefs = {};
+    let otherPeopleMonthsData = {};
+    otherPeople.forEach((p) => {
+      otherPersonDocRefs[p] = db.collection('people').doc(p);
+      otherPeopleMonthsData[p] = {};
+    });
+
     // Local (not UTC) YYYY-MM-DD, so it lines up with calendar days the way
     // a person actually experiences them, not shifted by timezone.
     function formatISODate(date) {
@@ -517,6 +534,43 @@ window.authReady.then(function () {
       });
     }
 
+    // Same as attachStateIconListener above, but for a task that lives in
+    // someone ELSE's document (they assigned it to you) — so marking it
+    // Started/Done writes back to the actual owner's doc, not your own
+    // (writing to your own would just silently create a duplicate that
+    // never syncs back to them).
+    function attachForeignStateIconListener(el, owner, weekIndex, taskIndex) {
+      paintStateIcon(el);
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const current = stateOrder.indexOf(el.dataset.state);
+        const next = stateOrder[(current + 1) % stateOrder.length];
+        el.dataset.state = next;
+        paintStateIcon(el);
+        const ownerMonthsForThisMonth = (otherPeopleMonthsData[owner] && otherPeopleMonthsData[owner][currentMonth]) || {};
+        const weekTasks = (ownerMonthsForThisMonth[weekIndex] || []).slice();
+        weekTasks[taskIndex] = { ...weekTasks[taskIndex], state: next };
+        const fieldPath = 'months.' + currentMonth + '.' + weekIndex;
+        otherPersonDocRefs[owner].update({ [fieldPath]: weekTasks });
+      });
+    }
+
+    // Looks across the other two people's data for anything they've
+    // assigned to whoever's page this is, for one specific week.
+    function getAssignedToMeTasks(weekIndex) {
+      const result = [];
+      otherPeople.forEach((owner) => {
+        const monthWeeks = (otherPeopleMonthsData[owner] && otherPeopleMonthsData[owner][currentMonth]) || {};
+        const tasks = monthWeeks[weekIndex] || [];
+        tasks.forEach((task, taskIndex) => {
+          if (task.assignee === currentPerson) {
+            result.push({ owner, taskIndex, task });
+          }
+        });
+      });
+      return result;
+    }
+
     // Chip selection (single-select) — clicking a chip in the modal just
     // changes which one looks selected; getSelectedChipPerson() reads it
     // back when Save is pressed.
@@ -546,11 +600,43 @@ window.authReady.then(function () {
       return row;
     }
 
+    // Same idea as buildTaskRow, but for a task someone else assigned to
+    // you — it lives in their document, so it's tagged with who assigned
+    // it and highlighted, and tapping the row doesn't open the Edit modal
+    // (you can't rename/retime a task you don't own — only mark it Started
+    // /Done via the state icon, which writes back to the assigner's doc).
+    function buildAssignedTaskRow(owner, weekIndex, taskIndex, task) {
+      const row = document.createElement('div');
+      row.className = 'task-row assigned-row';
+
+      const icon = document.createElement('span');
+      icon.className = 'state-icon';
+      icon.dataset.state = task.state;
+      attachForeignStateIconListener(icon, owner, weekIndex, taskIndex);
+
+      const textWrap = document.createElement('div');
+      textWrap.className = 'task-label-wrap';
+      const label = document.createElement('p');
+      label.className = 'task-label';
+      label.textContent = task.work;
+      const tag = document.createElement('p');
+      tag.className = 'assigned-tag';
+      tag.textContent = 'ASSIGNED BY ' + owner;
+      textWrap.appendChild(label);
+      textWrap.appendChild(tag);
+
+      row.appendChild(icon);
+      row.appendChild(textWrap);
+      return row;
+    }
+
     // Builds an unlocked/expanded week: header + its tasks. The ADD WORK
     // button only shows up for the one week that's actually happening right
     // now — a week that's already passed only makes sense to review/edit,
     // not add new work to, so it's left out for those (canAddWork = false).
-    function buildExpandedWeek(label, weekIndex, tasks, canAddWork) {
+    // assignedTasks are tasks from OTHER people's pages that they assigned
+    // to whoever's page this is, for this same week.
+    function buildExpandedWeek(label, weekIndex, tasks, canAddWork, assignedTasks) {
       const wrap = document.createElement('div');
       wrap.innerHTML =
         '<div class="week-header">' +
@@ -579,13 +665,14 @@ window.authReady.then(function () {
         });
       }
       const rowsEl = wrap.querySelector('.task-rows');
-      if (tasks.length === 0) {
+      if (tasks.length === 0 && assignedTasks.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'week-empty-hint';
         empty.textContent = 'Kaam karle Bhadwe';
         rowsEl.appendChild(empty);
       } else {
         tasks.forEach((task, taskIndex) => rowsEl.appendChild(buildTaskRow(weekIndex, taskIndex, task)));
+        assignedTasks.forEach(({ owner, taskIndex, task }) => rowsEl.appendChild(buildAssignedTaskRow(owner, weekIndex, taskIndex, task)));
       }
       return wrap;
     }
@@ -627,7 +714,9 @@ window.authReady.then(function () {
         // adding new tasks to.
         const canAddWork = isCurrentMonth && weekIndex === CURRENT_WEEK_INDEX;
         weeksListEl.appendChild(
-          locked ? buildLockedWeek(labels[weekIndex]) : buildExpandedWeek(labels[weekIndex], weekIndex, tasks, canAddWork)
+          locked
+            ? buildLockedWeek(labels[weekIndex])
+            : buildExpandedWeek(labels[weekIndex], weekIndex, tasks, canAddWork, getAssignedToMeTasks(weekIndex))
         );
       });
       renderMonthPickerRows();
@@ -652,6 +741,18 @@ window.authReady.then(function () {
       });
     }).catch(err => {
       console.error('Could not connect to Firestore:', err);
+    });
+
+    // Read-only live listeners on the other two people's docs, purely to
+    // pick up anything they've assigned to whoever's page this is. This is
+    // what makes the Assign feature actually work — without this, an
+    // assignment was just a label nobody but the assigner ever saw.
+    otherPeople.forEach((owner) => {
+      otherPersonDocRefs[owner].onSnapshot((snap) => {
+        const data = snap.data() || {};
+        otherPeopleMonthsData[owner] = data.months || {};
+        renderMonth(currentMonth);
+      });
     });
   
 });

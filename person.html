@@ -195,6 +195,31 @@
     font-size: 20px;
     margin: 0;
   }
+  /* A task someone else assigned to you — highlighted so it's obviously
+     different from your own tasks, and tagged with who assigned it. Not
+     clickable to edit (cursor: default) since you don't own it; the state
+     icon still works to mark progress. */
+  .task-row.assigned-row {
+    background: rgba(25, 255, 85, 0.08);
+    border-left: 3px solid var(--color-accent-primary);
+    padding-left: calc(var(--spacing-xl) - 3px);
+    cursor: default;
+  }
+  .task-row.assigned-row:hover { background: rgba(25, 255, 85, 0.08); }
+  .task-label-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-width: 0;
+  }
+  .assigned-tag {
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--color-accent-primary);
+  }
 
   /* ============ COLLAPSED WEEKS ============ */
   .collapsed-weeks { display: flex; flex-direction: column; gap: var(--spacing-3xl); }
@@ -855,7 +880,7 @@
   <!-- Auto-update: this page checks every 30s whether a new version has
        been pushed and reloads itself automatically if so — nobody has to
        remember to hard-refresh. See update-checker.js. -->
-  <script>window.APP_VERSION = 3;</script>
+  <script>window.APP_VERSION = 4;</script>
   <script defer src="./update-checker.js"></script>
 
 </body>
