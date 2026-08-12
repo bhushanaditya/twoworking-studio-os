@@ -130,4 +130,11 @@ window.authReady.then(function () {
       });
     });
 
+    // Tells update-checker.js whether now is a safe moment to auto-reload
+    // this page — not while you're mid-edit on the monthly goal text,
+    // since reloading then would wipe out what you were typing.
+    window.isSafeToAutoReload = function () {
+      return goalAmountInput.hidden;
+    };
+
 });

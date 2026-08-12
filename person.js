@@ -722,6 +722,15 @@ window.authReady.then(function () {
       renderMonthPickerRows();
     }
 
+    // Tells update-checker.js whether now is a safe moment to auto-reload
+    // this page. It's NOT safe while the Add/Edit Work modal, the month
+    // picker, or the log type/mic box is open — reloading then would wipe
+    // out whatever you were in the middle of typing, which is exactly the
+    // bug this exists to prevent.
+    window.isSafeToAutoReload = function () {
+      return dimOverlay.hidden && logInputRow.hidden;
+    };
+
     // ============ LOAD + LIVE SYNC ============
     // First: make sure this person's document exists (create it with the
     // seed data if this is genuinely the first time). Then: listen for any
