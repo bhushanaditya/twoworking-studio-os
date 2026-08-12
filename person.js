@@ -614,9 +614,23 @@ window.authReady.then(function () {
     function writeLastActivity(docRef, ownerName, work, state) {
       const text = buildActivityMessage(ownerName, work)(state);
       if (!text) return;
+      writeActivityText(docRef, text);
+    }
+    function writeActivityText(docRef, text) {
       docRef.update({
         lastActivity: { text, dateISO: formatISODate(new Date()), timestamp: new Date().toISOString() },
       });
+    }
+    // Ticking subtasks off is real progress too, so it also shows up on the
+    // home screen — e.g. "NABH finished 2/3 subtasks of ..." (or a plain
+    // "completed" message once they're all done).
+    function announceSubtaskProgress(docRef, ownerName, work, subtasks) {
+      const doneCount = subtasks.filter((s) => s.done).length;
+      const total = subtasks.length;
+      const text = doneCount === total
+        ? ownerName + ' finished all subtasks of "' + work + '"'
+        : ownerName + ' finished ' + doneCount + '/' + total + ' subtasks of "' + work + '"';
+      writeActivityText(docRef, text);
     }
 
     // weekIndex/taskIndex let a click on the icon save the new state to
@@ -696,9 +710,48 @@ window.authReady.then(function () {
       return doneCount + '/' + subtasks.length + ' subtasks';
     }
 
+    // Builds the list of subtasks shown directly under a task on the week
+    // list, so they can be ticked off without opening the Edit modal.
+    // `onToggle(subtaskIndex)` is what actually writes the change — it
+    // differs for your own tasks vs ones assigned to you (different docs).
+    function buildInlineSubtasks(task, onToggle) {
+      const subtasks = task.subtasks || [];
+      if (subtasks.length === 0) return null;
+      const wrap = document.createElement('div');
+      wrap.className = 'inline-subtasks';
+      subtasks.forEach((subtask, subtaskIndex) => {
+        const row = document.createElement('div');
+        row.className = 'inline-subtask-row';
+
+        const checkbox = document.createElement('button');
+        checkbox.type = 'button';
+        checkbox.className = 'subtask-checkbox inline' + (subtask.done ? ' done' : '');
+        checkbox.innerHTML = subtaskCheckSVG;
+        checkbox.setAttribute('aria-label', (subtask.done ? 'Mark incomplete: ' : 'Mark complete: ') + subtask.text);
+        checkbox.addEventListener('click', (e) => {
+          // Don't also open the Edit modal via the task row's click handler.
+          e.stopPropagation();
+          onToggle(subtaskIndex);
+        });
+
+        const text = document.createElement('p');
+        text.className = 'inline-subtask-text' + (subtask.done ? ' done' : '');
+        text.textContent = subtask.text;
+
+        row.appendChild(checkbox);
+        row.appendChild(text);
+        wrap.appendChild(row);
+      });
+      return wrap;
+    }
+
     // Builds one task row from a monthsData entry, wired to open the Edit
-    // modal on click and to cycle its state icon.
+    // modal on click and to cycle its state icon. Returns a block: the row
+    // itself plus (if it has any) its subtasks listed underneath.
     function buildTaskRow(weekIndex, taskIndex, task) {
+      const block = document.createElement('div');
+      block.className = 'task-block';
+
       const row = document.createElement('div');
       row.className = 'task-row';
 
@@ -724,7 +777,23 @@ window.authReady.then(function () {
       row.appendChild(icon);
       row.appendChild(textWrap);
       row.addEventListener('click', () => openEditModal(weekIndex, taskIndex));
-      return row;
+      block.appendChild(row);
+
+      const subtasksEl = buildInlineSubtasks(task, (subtaskIndex) => {
+        const weekTasks = monthsData[currentMonth][weekIndex].slice();
+        const current = weekTasks[taskIndex];
+        const updatedSubtasks = (current.subtasks || []).slice();
+        updatedSubtasks[subtaskIndex] = {
+          ...updatedSubtasks[subtaskIndex],
+          done: !updatedSubtasks[subtaskIndex].done,
+        };
+        weekTasks[taskIndex] = { ...current, subtasks: updatedSubtasks };
+        saveWeekTasks(weekIndex, weekTasks);
+        announceSubtaskProgress(personDocRef, currentPerson, current.work, updatedSubtasks);
+      });
+      if (subtasksEl) block.appendChild(subtasksEl);
+
+      return block;
     }
 
     // Same idea as buildTaskRow, but for a task someone else assigned to
@@ -733,6 +802,9 @@ window.authReady.then(function () {
     // (you can't rename/retime a task you don't own — only mark it Started
     // /Done via the state icon, which writes back to the assigner's doc).
     function buildAssignedTaskRow(owner, weekIndex, taskIndex, task) {
+      const block = document.createElement('div');
+      block.className = 'task-block';
+
       const row = document.createElement('div');
       row.className = 'task-row assigned-row';
 
@@ -761,7 +833,27 @@ window.authReady.then(function () {
 
       row.appendChild(icon);
       row.appendChild(textWrap);
-      return row;
+      block.appendChild(row);
+
+      // Subtasks on an assigned task are tickable too — the write goes to
+      // the owner's document, same as its state icon does.
+      const subtasksEl = buildInlineSubtasks(task, (subtaskIndex) => {
+        const ownerMonthWeeks = (otherPeopleMonthsData[owner] && otherPeopleMonthsData[owner][currentMonth]) || {};
+        const weekTasks = (ownerMonthWeeks[weekIndex] || []).slice();
+        const current = weekTasks[taskIndex];
+        const updatedSubtasks = (current.subtasks || []).slice();
+        updatedSubtasks[subtaskIndex] = {
+          ...updatedSubtasks[subtaskIndex],
+          done: !updatedSubtasks[subtaskIndex].done,
+        };
+        weekTasks[taskIndex] = { ...current, subtasks: updatedSubtasks };
+        const fieldPath = 'months.' + currentMonth + '.' + weekIndex;
+        otherPersonDocRefs[owner].update({ [fieldPath]: weekTasks });
+        announceSubtaskProgress(otherPersonDocRefs[owner], owner, current.work, updatedSubtasks);
+      });
+      if (subtasksEl) block.appendChild(subtasksEl);
+
+      return block;
     }
 
     // Builds an unlocked/expanded week: header + its tasks. The ADD WORK
