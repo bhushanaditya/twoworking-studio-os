@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://www.gstatic.com">
 <link rel="preconnect" href="https://firestore.googleapis.com">
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+<!-- Shared design tokens (colors, spacing, radii) — same file person.html
+     uses, so the two pages can never quietly drift apart on a color or
+     spacing value. See tokens.css for the full list. -->
+<link rel="stylesheet" href="./tokens.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Studio OS — Home (preview)</title>
@@ -19,36 +23,8 @@
     font-display: swap;
   }
 
-  /* ============ DESIGN TOKENS (from Figma) ============ */
-  :root {
-    --black-900: #212121;
-    --black-pure: #000000;
-    --white-100: #ffffff;
-    --gray-100: #f0f0f0;
-    --green-500: #19ff55;
-    --red-500: #ff1919;
-
-    --color-bg-surface: var(--black-900);
-    --color-text-primary: var(--white-100);
-    --color-text-on-accent: var(--black-900);
-    --color-accent-primary: var(--green-500);
-    --color-border-default: var(--gray-100);
-    --color-danger: var(--red-500);
-
-    --spacing-xs: 4px;
-    --spacing-sm: 8px;
-    --spacing-md: 16px;
-    --spacing-lg: 20px;
-    --spacing-xl: 24px;
-    --spacing-2xl: 32px;
-    --spacing-3xl: 40px;
-
-    /* Responsive content width: mobile = full width, desktop = capped so it
-       doesn't stretch into an unreadable single line, but dividers/borders
-       still run edge-to-edge of that width (not floating in a tiny mobile
-       column with dead space on either side). */
-    --content-max: 1100px;
-  }
+  /* Design tokens (colors, spacing, radii) now live in tokens.css, linked
+     in <head> above — not redefined here. */
 
   * { box-sizing: border-box; }
   html, body {
@@ -470,7 +446,7 @@
   <!-- Auto-update: this page checks every 30s whether a new version has
        been pushed and reloads itself automatically if so — nobody has to
        remember to hard-refresh. See update-checker.js. -->
-  <script>window.APP_VERSION = 1;</script>
+  <script>window.APP_VERSION = 2;</script>
   <script defer src="./update-checker.js"></script>
 
 </body>

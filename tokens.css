@@ -1,0 +1,50 @@
+/* ============ STUDIO OS — SHARED DESIGN TOKENS ============
+   Every color, spacing size, and corner radius the app uses lives here,
+   in one place, instead of being redefined separately inside index.html
+   and person.html. That's what "a design system" means in practice for a
+   project this size: one file both pages point to, so a value can never
+   quietly drift between pages, and a typo'd variable name shows up
+   immediately (missing) instead of just silently failing on one page.
+
+   To change a color/spacing/radius everywhere at once: edit it here.
+   To add a new one: add it here, then use it in either page's CSS. */
+
+:root {
+  /* Raw values — never used directly in page CSS, only referenced below */
+  --black-900: #212121;
+  --black-pure: #000000;
+  --white-100: #ffffff;
+  --gray-100: #f0f0f0;
+  --green-500: #19ff55;
+  --red-500: #ff1919;
+
+  /* Semantic colors — what page CSS actually uses */
+  --color-bg-surface: var(--black-900);
+  --color-bg-card: var(--gray-100);
+  --color-text-primary: var(--white-100);
+  --color-text-on-accent: var(--black-900);
+  --color-text-on-light: var(--black-900);
+  --color-accent-primary: var(--green-500);
+  --color-border-default: var(--gray-100);
+  --color-surface-inverse: var(--white-100);
+  --color-danger: var(--red-500);
+
+  /* Spacing scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 40px;
+
+  /* Corner radii */
+  --radius-md: 16px;
+  --radius-full: 999px;
+
+  /* Responsive content width: mobile = full width, desktop = capped so it
+     doesn't stretch into an unreadable single line, but dividers/borders
+     still run edge-to-edge of that width (not floating in a tiny mobile
+     column with dead space on either side). */
+  --content-max: 1100px;
+}
