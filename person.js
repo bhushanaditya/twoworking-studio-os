@@ -437,7 +437,7 @@ window.authReady.then(function () {
         checkbox.innerHTML = subtaskCheckSVG;
         checkbox.addEventListener('click', () => {
           editingSubtasks[subtaskIndex] = { ...subtask, done: !subtask.done };
-          persistSubtasksIfEditing();
+          persistSubtasksIfEditing(true); // ticking a subtask is real progress
           renderSubtaskList();
         });
 
@@ -491,12 +491,19 @@ window.authReady.then(function () {
 
     // Only writes to Firestore in Edit mode (a real, already-saved task to
     // attach subtasks to) — in Add mode there's nothing to write to yet.
-    function persistSubtasksIfEditing() {
+    // `announce` is true when the change is a tick/untick (real progress
+    // worth showing on the home screen) and false for adds/removes/assign
+    // changes, which aren't progress.
+    function persistSubtasksIfEditing(announce) {
       if (!editingContext || editingContext.taskIndex === null) return;
       const { weekIndex, taskIndex } = editingContext;
       const weekTasks = monthsData[currentMonth][weekIndex].slice();
-      weekTasks[taskIndex] = { ...weekTasks[taskIndex], subtasks: editingSubtasks };
+      const task = weekTasks[taskIndex];
+      weekTasks[taskIndex] = { ...task, subtasks: editingSubtasks };
       saveWeekTasks(weekIndex, weekTasks);
+      if (announce) {
+        announceSubtaskProgress(personDocRef, currentPerson, task.work, editingSubtasks);
+      }
     }
 
     function addSubtaskFromInput() {
@@ -948,7 +955,9 @@ window.authReady.then(function () {
     // not add new work to, so it's left out for those (canAddWork = false).
     // assignedTasks are tasks from OTHER people's pages that they assigned
     // to whoever's page this is, for this same week.
-    function buildExpandedWeek(label, weekIndex, tasks, canAddWork, assignedTasks) {
+    // `isPast` = this week is already over, so an empty week is a verdict
+    // ("nothing got done") rather than a nudge ("go do something").
+    function buildExpandedWeek(label, weekIndex, tasks, canAddWork, assignedTasks, isPast) {
       const wrap = document.createElement('div');
       wrap.innerHTML =
         '<div class="week-header">' +
@@ -980,7 +989,7 @@ window.authReady.then(function () {
       if (tasks.length === 0 && assignedTasks.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'week-empty-hint';
-        empty.textContent = 'Kaam karle Bhadwe';
+        empty.textContent = isPast ? 'Kuch kaam nahi kiya bhadwe ne' : 'Kaam karle Bhadwe';
         rowsEl.appendChild(empty);
       } else {
         tasks.forEach((task, taskIndex) => rowsEl.appendChild(buildTaskRow(weekIndex, taskIndex, task)));
@@ -1026,10 +1035,13 @@ window.authReady.then(function () {
         // week that's already passed is just for review/editing, not for
         // adding new tasks to.
         const canAddWork = isCurrentMonth && weekIndex === CURRENT_WEEK_INDEX;
+        // A week is "past" if it's an earlier week of this month, or any
+        // week of a month that's already been and gone.
+        const isPast = !isCurrentMonth || weekIndex < CURRENT_WEEK_INDEX;
         weeksListEl.appendChild(
           locked
             ? buildLockedWeek(labels[weekIndex])
-            : buildExpandedWeek(labels[weekIndex], weekIndex, tasks, canAddWork, getAssignedToMeTasks(weekIndex))
+            : buildExpandedWeek(labels[weekIndex], weekIndex, tasks, canAddWork, getAssignedToMeTasks(weekIndex), isPast)
         );
       });
       renderMonthPickerRows();

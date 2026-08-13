@@ -11,6 +11,11 @@
      uses, so the two pages can never quietly drift apart on a color or
      spacing value. See tokens.css for the full list. -->
 <link rel="stylesheet" href="./tokens.css">
+<!-- The studio eye mark, reused as the browser tab icon. Points at the
+     same logo.svg the header uses, so there's only one file to update if
+     the mark ever changes. -->
+<link rel="icon" type="image/svg+xml" href="./assets/logo.svg">
+<link rel="apple-touch-icon" href="./assets/logo.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- Tells Android Chrome (and other browsers with an auto "force dark"
@@ -472,7 +477,7 @@
   <!-- Auto-update: this page checks every 30s whether a new version has
        been pushed and reloads itself automatically if so — nobody has to
        remember to hard-refresh. See update-checker.js. -->
-  <script>window.APP_VERSION = 12;</script>
+  <script>window.APP_VERSION = 13;</script>
   <script defer src="./update-checker.js?v=2"></script>
 
 </body>
