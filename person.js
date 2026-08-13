@@ -357,10 +357,10 @@ window.authReady.then(function () {
       const weeks = {};
       for (let i = 0; i < weekCountForMonth(CURRENT_YEAR, CURRENT_MONTH_INDEX); i++) weeks[i] = [];
       weeks[CURRENT_WEEK_INDEX] = [
-        { work: 'Task One that i have to finish', due: '12 August', notes: 'I will first try to do it using claude and if the expected result not achieved then move to After effects', assignee: 'AVI', state: 'Not Started' },
-        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignee: 'NONE', state: 'Started' },
-        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignee: 'NONE', state: 'Not Started' },
-        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignee: 'NONE', state: 'Full Completed' },
+        { work: 'Task One that i have to finish', due: '12 August', notes: 'I will first try to do it using claude and if the expected result not achieved then move to After effects', assignees: [], state: 'Not Started' },
+        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignees: [], state: 'Started' },
+        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignees: [], state: 'Not Started' },
+        { work: 'Task One that i have to finish', due: '12 August', notes: '', assignees: [], state: 'Full Completed' },
       ];
       const months = {};
       months[CURRENT_MONTH] = weeks;
@@ -375,14 +375,38 @@ window.authReady.then(function () {
     // null in Add mode (a new task, not yet saved).
     let editingContext = null;
 
-    function selectChip(person) {
-      document.querySelectorAll('.chip').forEach(c => {
-        c.classList.toggle('selected', c.dataset.person === person);
-      });
+    // ============ ASSIGN (multi-select, excludes yourself) ============
+    // A task can be assigned to any number of the OTHER people — never to
+    // whoever's page it already lives on, since that's redundant. Stored
+    // as `assignees: []`. Older tasks saved before this used a single
+    // `assignee: 'NAME'` string, so readAssignees() understands both and
+    // everything downstream only deals with arrays.
+    const assignChipRow = document.getElementById('assignChipRow');
+    let selectedAssignees = [];
+
+    function readAssignees(item) {
+      if (Array.isArray(item.assignees)) return item.assignees;
+      if (item.assignee && item.assignee !== 'NONE') return [item.assignee]; // legacy single-assignee task
+      return [];
     }
-    function getSelectedChipPerson() {
-      const selected = document.querySelector('.chip.selected');
-      return selected ? selected.dataset.person : 'NONE';
+
+    function renderAssignChips() {
+      assignChipRow.innerHTML = '';
+      otherPeople.forEach((person) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip' + (selectedAssignees.includes(person) ? ' selected' : '');
+        chip.dataset.person = person;
+        chip.textContent = person;
+        chip.addEventListener('click', () => {
+          // Toggle — tap to add, tap again to remove, any number at once.
+          selectedAssignees = selectedAssignees.includes(person)
+            ? selectedAssignees.filter((p) => p !== person)
+            : selectedAssignees.concat(person);
+          renderAssignChips();
+        });
+        assignChipRow.appendChild(chip);
+      });
     }
 
     // ============ SUBTASKS (inside the Add/Edit Work modal) ============
@@ -401,6 +425,9 @@ window.authReady.then(function () {
     function renderSubtaskList() {
       subtaskListEl.innerHTML = '';
       editingSubtasks.forEach((subtask, subtaskIndex) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'subtask-item';
+
         const row = document.createElement('div');
         row.className = 'subtask-row';
 
@@ -432,7 +459,33 @@ window.authReady.then(function () {
         row.appendChild(checkbox);
         row.appendChild(text);
         row.appendChild(remove);
-        subtaskListEl.appendChild(row);
+        wrap.appendChild(row);
+
+        // Each subtask gets its own little assign row, so a single task
+        // can be split across people ("you do the contact page, I'll do
+        // the studio page") rather than the whole thing going to one
+        // person. Same rule as the task-level chips: never yourself.
+        const chipRow = document.createElement('div');
+        chipRow.className = 'subtask-chip-row';
+        const current = readAssignees(subtask);
+        otherPeople.forEach((person) => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'chip mini' + (current.includes(person) ? ' selected' : '');
+          chip.textContent = person;
+          chip.addEventListener('click', () => {
+            const updated = current.includes(person)
+              ? current.filter((p) => p !== person)
+              : current.concat(person);
+            editingSubtasks[subtaskIndex] = { ...subtask, assignees: updated };
+            persistSubtasksIfEditing();
+            renderSubtaskList();
+          });
+          chipRow.appendChild(chip);
+        });
+        wrap.appendChild(chipRow);
+
+        subtaskListEl.appendChild(wrap);
       });
     }
 
@@ -468,7 +521,8 @@ window.authReady.then(function () {
       fieldWork.value = '';
       fieldDue.value = '';
       fieldNotes.value = '';
-      selectChip('NONE'); // default Assign selection is "No one" for a brand-new task
+      selectedAssignees = []; // a brand-new task starts assigned to nobody
+      renderAssignChips();
       editingSubtasks = [];
       renderSubtaskList();
       btnDelete.style.display = 'none'; // nothing to delete yet in Add mode
@@ -482,7 +536,8 @@ window.authReady.then(function () {
       fieldWork.value = task.work;
       fieldDue.value = task.due;
       fieldNotes.value = task.notes;
-      selectChip(task.assignee);
+      selectedAssignees = readAssignees(task).slice();
+      renderAssignChips();
       editingSubtasks = (task.subtasks || []).slice();
       renderSubtaskList();
       btnDelete.style.display = '';
@@ -511,14 +566,14 @@ window.authReady.then(function () {
       }
       const due = fieldDue.value.trim();
       const notes = fieldNotes.value.trim();
-      const assignee = getSelectedChipPerson();
+      const assignees = selectedAssignees.slice();
       const { weekIndex, taskIndex } = editingContext;
       const weekTasks = monthsData[currentMonth][weekIndex].slice(); // copy — don't mutate in place
 
       if (taskIndex === null) {
-        weekTasks.push({ work, due, notes, assignee, state: 'Not Started', subtasks: editingSubtasks });
+        weekTasks.push({ work, due, notes, assignees, state: 'Not Started', subtasks: editingSubtasks });
       } else {
-        weekTasks[taskIndex] = { work, due, notes, assignee, state: weekTasks[taskIndex].state, subtasks: editingSubtasks };
+        weekTasks[taskIndex] = { work, due, notes, assignees, state: weekTasks[taskIndex].state, subtasks: editingSubtasks };
       }
       saveWeekTasks(weekIndex, weekTasks);
       closeModal();
@@ -678,27 +733,35 @@ window.authReady.then(function () {
     }
 
     // Looks across the other two people's data for anything they've
-    // assigned to whoever's page this is, for one specific week.
+    // assigned to whoever's page this is, for one specific week. A task
+    // shows up here if either the whole task was assigned to you, OR just
+    // one of its subtasks was — in the latter case only the subtasks
+    // that are actually yours get listed under it, so you're not staring
+    // at somebody else's half of the work.
     function getAssignedToMeTasks(weekIndex) {
       const result = [];
       otherPeople.forEach((owner) => {
         const monthWeeks = (otherPeopleMonthsData[owner] && otherPeopleMonthsData[owner][currentMonth]) || {};
         const tasks = monthWeeks[weekIndex] || [];
         tasks.forEach((task, taskIndex) => {
-          if (task.assignee === currentPerson) {
-            result.push({ owner, taskIndex, task });
+          const taskIsMine = readAssignees(task).includes(currentPerson);
+          const mySubtaskIndexes = (task.subtasks || [])
+            .map((subtask, subtaskIndex) => (readAssignees(subtask).includes(currentPerson) ? subtaskIndex : -1))
+            .filter((i) => i !== -1);
+          if (taskIsMine || mySubtaskIndexes.length > 0) {
+            result.push({
+              owner,
+              taskIndex,
+              task,
+              // null = show all subtasks (the whole task is yours);
+              // otherwise only the specific subtasks assigned to you.
+              visibleSubtaskIndexes: taskIsMine ? null : mySubtaskIndexes,
+            });
           }
         });
       });
       return result;
     }
-
-    // Chip selection (single-select) — clicking a chip in the modal just
-    // changes which one looks selected; getSelectedChipPerson() reads it
-    // back when Save is pressed.
-    document.querySelectorAll('.chip').forEach(chip => {
-      chip.addEventListener('click', () => selectChip(chip.dataset.person));
-    });
 
     // ============ RENDERING ============
     // "2/4 subtasks" hint, or null if this task has no subtasks — used
@@ -714,12 +777,17 @@ window.authReady.then(function () {
     // list, so they can be ticked off without opening the Edit modal.
     // `onToggle(subtaskIndex)` is what actually writes the change — it
     // differs for your own tasks vs ones assigned to you (different docs).
-    function buildInlineSubtasks(task, onToggle) {
+    // `visibleSubtaskIndexes` limits which subtasks to show (used when
+    // only part of someone else's task was assigned to you); null = all.
+    function buildInlineSubtasks(task, onToggle, visibleSubtaskIndexes) {
       const subtasks = task.subtasks || [];
       if (subtasks.length === 0) return null;
       const wrap = document.createElement('div');
       wrap.className = 'inline-subtasks';
+      let shown = 0;
       subtasks.forEach((subtask, subtaskIndex) => {
+        if (visibleSubtaskIndexes && !visibleSubtaskIndexes.includes(subtaskIndex)) return;
+        shown++;
         const row = document.createElement('div');
         row.className = 'inline-subtask-row';
 
@@ -740,9 +808,19 @@ window.authReady.then(function () {
 
         row.appendChild(checkbox);
         row.appendChild(text);
+
+        // Who this particular subtask is on, if anyone.
+        const subtaskAssignees = readAssignees(subtask);
+        if (subtaskAssignees.length > 0) {
+          const tag = document.createElement('p');
+          tag.className = 'inline-subtask-assignee';
+          tag.textContent = subtaskAssignees.join(', ');
+          row.appendChild(tag);
+        }
+
         wrap.appendChild(row);
       });
-      return wrap;
+      return shown > 0 ? wrap : null;
     }
 
     // Builds one task row from a monthsData entry, wired to open the Edit
@@ -766,6 +844,14 @@ window.authReady.then(function () {
       label.className = 'task-label';
       label.textContent = task.work;
       textWrap.appendChild(label);
+      // Who you've handed this task to, if anyone.
+      const taskAssignees = readAssignees(task);
+      if (taskAssignees.length > 0) {
+        const tag = document.createElement('p');
+        tag.className = 'assigned-tag';
+        tag.textContent = 'ASSIGNED TO ' + taskAssignees.join(', ');
+        textWrap.appendChild(tag);
+      }
       const progressText = subtaskProgressText(task);
       if (progressText) {
         const progress = document.createElement('p');
@@ -801,7 +887,7 @@ window.authReady.then(function () {
     // it and highlighted, and tapping the row doesn't open the Edit modal
     // (you can't rename/retime a task you don't own — only mark it Started
     // /Done via the state icon, which writes back to the assigner's doc).
-    function buildAssignedTaskRow(owner, weekIndex, taskIndex, task) {
+    function buildAssignedTaskRow(owner, weekIndex, taskIndex, task, visibleSubtaskIndexes) {
       const block = document.createElement('div');
       block.className = 'task-block';
 
@@ -850,7 +936,7 @@ window.authReady.then(function () {
         const fieldPath = 'months.' + currentMonth + '.' + weekIndex;
         otherPersonDocRefs[owner].update({ [fieldPath]: weekTasks });
         announceSubtaskProgress(otherPersonDocRefs[owner], owner, current.work, updatedSubtasks);
-      });
+      }, visibleSubtaskIndexes);
       if (subtasksEl) block.appendChild(subtasksEl);
 
       return block;
@@ -898,7 +984,8 @@ window.authReady.then(function () {
         rowsEl.appendChild(empty);
       } else {
         tasks.forEach((task, taskIndex) => rowsEl.appendChild(buildTaskRow(weekIndex, taskIndex, task)));
-        assignedTasks.forEach(({ owner, taskIndex, task }) => rowsEl.appendChild(buildAssignedTaskRow(owner, weekIndex, taskIndex, task)));
+        assignedTasks.forEach(({ owner, taskIndex, task, visibleSubtaskIndexes }) =>
+          rowsEl.appendChild(buildAssignedTaskRow(owner, weekIndex, taskIndex, task, visibleSubtaskIndexes)));
       }
       return wrap;
     }

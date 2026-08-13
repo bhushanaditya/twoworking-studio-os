@@ -229,6 +229,17 @@
     opacity: 0.85;
   }
   .inline-subtask-text.done { text-decoration: line-through; opacity: 0.45; }
+  /* Who a specific subtask is on, shown at the end of its row. */
+  .inline-subtask-assignee {
+    margin: 0 0 0 auto;
+    padding-left: var(--spacing-sm);
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--color-accent-primary);
+    white-space: nowrap;
+  }
   .task-row:hover { background: rgba(255,255,255,0.06); }
   .task-row .state-icon { width: 38px; height: 20.45px; flex-shrink: 0; cursor: pointer; }
   .task-row .state-icon svg { width: 100%; height: 100%; }
@@ -624,7 +635,26 @@
   .subtask-list {
     display: flex;
     flex-direction: column;
+    gap: var(--spacing-md);
+  }
+  .subtask-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  /* Per-subtask assign chips — smaller than the task-level ones so the
+     subtask still reads as subordinate to the task above it. */
+  .subtask-chip-row {
+    display: flex;
     gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    padding-left: calc(20px + var(--spacing-sm));
+  }
+  .chip.mini {
+    min-width: 0;
+    padding: 2px 10px;
+    font-size: 12px;
+    border-radius: var(--radius-full);
   }
   .subtask-row {
     display: flex;
@@ -989,14 +1019,13 @@
         </div>
       </div>
 
+      <!-- Chips are built by person.js rather than hardcoded here, so the
+           page can leave out whoever's page this is (no point assigning
+           work to yourself on your own page) and allow picking more than
+           one person at once. -->
       <div class="assign-wrap">
         <p class="assign-label">ASSIGN</p>
-        <div class="chip-row">
-          <button class="chip selected" data-person="NONE">No one</button>
-          <button class="chip" data-person="ADI">ADI</button>
-          <button class="chip" data-person="AVI">AVI</button>
-          <button class="chip" data-person="NABH">NABH</button>
-        </div>
+        <div class="chip-row" id="assignChipRow"></div>
       </div>
 
       <div class="button-row">
@@ -1015,11 +1044,11 @@
   <script defer src="./firebase-config.js"></script>
   <script defer src="./auth-gate.js"></script>
 
-  <script defer src="./person.js?v=10"></script>
+  <script defer src="./person.js?v=11"></script>
   <!-- Auto-update: this page checks every 30s whether a new version has
        been pushed and reloads itself automatically if so — nobody has to
        remember to hard-refresh. See update-checker.js. -->
-  <script>window.APP_VERSION = 11;</script>
+  <script>window.APP_VERSION = 12;</script>
   <script defer src="./update-checker.js?v=2"></script>
 
 </body>
