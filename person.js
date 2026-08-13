@@ -436,8 +436,11 @@ window.authReady.then(function () {
         checkbox.className = 'subtask-checkbox' + (subtask.done ? ' done' : '');
         checkbox.innerHTML = subtaskCheckSVG;
         checkbox.addEventListener('click', () => {
-          editingSubtasks[subtaskIndex] = { ...subtask, done: !subtask.done };
-          persistSubtasksIfEditing(true); // ticking a subtask is real progress
+          const updated = { ...subtask, done: !subtask.done };
+          editingSubtasks[subtaskIndex] = updated;
+          // Pass the changed subtask itself — ticking is real progress and
+          // the home-screen banner names which subtask it was.
+          persistSubtasksIfEditing(updated);
           renderSubtaskList();
         });
 
@@ -502,7 +505,7 @@ window.authReady.then(function () {
       weekTasks[taskIndex] = { ...task, subtasks: editingSubtasks };
       saveWeekTasks(weekIndex, weekTasks);
       if (announce) {
-        announceSubtaskProgress(personDocRef, currentPerson, task.work, editingSubtasks);
+        announceSubtaskProgress(personDocRef, currentPerson, task.work, editingSubtasks, announce);
       }
     }
 
@@ -686,12 +689,23 @@ window.authReady.then(function () {
     // Ticking subtasks off is real progress too, so it also shows up on the
     // home screen — e.g. "NABH finished 2/3 subtasks of ..." (or a plain
     // "completed" message once they're all done).
-    function announceSubtaskProgress(docRef, ownerName, work, subtasks) {
+    // `changed` is the specific subtask that was just ticked/unticked, so
+    // the banner can name it — "finished 1/2 subtasks" alone doesn't tell
+    // anyone WHICH bit of the work actually moved.
+    function announceSubtaskProgress(docRef, ownerName, work, subtasks, changed) {
       const doneCount = subtasks.filter((s) => s.done).length;
       const total = subtasks.length;
-      const text = doneCount === total
-        ? ownerName + ' finished all subtasks of "' + work + '"'
-        : ownerName + ' finished ' + doneCount + '/' + total + ' subtasks of "' + work + '"';
+      const progress = ' (' + doneCount + '/' + total + ' of "' + work + '")';
+      let text;
+      if (changed && !changed.done) {
+        // Unticking is a step backwards — say so plainly rather than
+        // calling it "finished".
+        text = ownerName + ' reopened "' + changed.text + '"' + progress;
+      } else if (doneCount === total) {
+        text = ownerName + ' finished "' + (changed ? changed.text : '') + '" — all done on "' + work + '"';
+      } else {
+        text = ownerName + ' finished "' + (changed ? changed.text : '') + '"' + progress;
+      }
       writeActivityText(docRef, text);
     }
 
@@ -882,7 +896,7 @@ window.authReady.then(function () {
         };
         weekTasks[taskIndex] = { ...current, subtasks: updatedSubtasks };
         saveWeekTasks(weekIndex, weekTasks);
-        announceSubtaskProgress(personDocRef, currentPerson, current.work, updatedSubtasks);
+        announceSubtaskProgress(personDocRef, currentPerson, current.work, updatedSubtasks, updatedSubtasks[subtaskIndex]);
       });
       if (subtasksEl) block.appendChild(subtasksEl);
 
@@ -942,7 +956,7 @@ window.authReady.then(function () {
         weekTasks[taskIndex] = { ...current, subtasks: updatedSubtasks };
         const fieldPath = 'months.' + currentMonth + '.' + weekIndex;
         otherPersonDocRefs[owner].update({ [fieldPath]: weekTasks });
-        announceSubtaskProgress(otherPersonDocRefs[owner], owner, current.work, updatedSubtasks);
+        announceSubtaskProgress(otherPersonDocRefs[owner], owner, current.work, updatedSubtasks, updatedSubtasks[subtaskIndex]);
       }, visibleSubtaskIndexes);
       if (subtasksEl) block.appendChild(subtasksEl);
 
